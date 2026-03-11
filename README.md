@@ -22,9 +22,12 @@ python3 -m scripts.kg create note --title "Test Note"
 python3 -m scripts.kg create daily --date 2026-03-11
 python3 -m scripts.kg create decision --title "Choose SQLite"
 python3 -m scripts.kg create review --title "Weekly Review" --date 2026-03-11
+python3 -m scripts.kg create project --title "Atlas" --git-worktree ~/src/atlas
 ```
 
 Each command prints the created relative path.
+
+`create project` only accepts an already existing local git working directory. The CLI does not clone repositories or manage remotes, fetch, pull, or push.
 
 ## Validate Repository Content
 

@@ -10,6 +10,7 @@ class KGQueryTests(unittest.TestCase):
     def setUp(self) -> None:
         self.repo = TemporaryRepo()
         self.repo.create_standard_layout()
+        git_worktree = self.repo.create_git_worktree("external/atlas")
         self.repo.write_file(
             "notes/idea-note.md",
             self.document(
@@ -33,6 +34,18 @@ class KGQueryTests(unittest.TestCase):
                 extra_fields="theme: []\nproject: []\n",
             ),
         )
+        self.repo.write_file(
+            "projects/atlas/README.md",
+            self.document(
+                document_type="project",
+                title="Atlas",
+                slug="atlas",
+                document_id="project-1",
+                summary="Project workspace",
+                body="Atlas uses a local git worktree.",
+                extra_fields=f"git_worktree: {git_worktree.resolve()}\ntheme: []\n",
+            ),
+        )
 
     def tearDown(self) -> None:
         self.repo.cleanup()
@@ -42,6 +55,7 @@ class KGQueryTests(unittest.TestCase):
 
         self.assertIn("note\tIdea Note\tnotes/idea-note.md", output)
         self.assertIn("decision\tChoose SQLite\tdecisions/choose-sqlite.md", output)
+        self.assertIn("project\tAtlas\tprojects/atlas/README.md", output)
 
     def test_list_type_filters_results(self) -> None:
         output = self.run_cli("list", "--type", "note")
@@ -58,10 +72,11 @@ class KGQueryTests(unittest.TestCase):
     def test_stats_returns_total_and_grouped_counts(self) -> None:
         output = self.run_cli("stats")
 
-        self.assertIn("total\t2", output)
+        self.assertIn("total\t3", output)
         self.assertIn("type:decision\t1", output)
         self.assertIn("type:note\t1", output)
-        self.assertIn("status:inbox\t2", output)
+        self.assertIn("type:project\t1", output)
+        self.assertIn("status:inbox\t3", output)
 
     def run_cli(self, *args: str) -> str:
         from scripts.kg.app import main

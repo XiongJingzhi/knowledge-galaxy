@@ -101,6 +101,49 @@ class KGValidateTests(unittest.TestCase):
         self.assertIn("invalid daily path", output)
         self.assertIn("daily slug must match date", output)
 
+    def test_validate_accepts_project_document_with_git_worktree(self) -> None:
+        from scripts.kg.app import main
+
+        git_worktree = self.repo.create_git_worktree("external/alpha")
+        self.repo.write_file(
+            "projects/alpha/README.md",
+            self.project_document(
+                title="Alpha",
+                slug="alpha",
+                document_id="project-1",
+                git_worktree=str(git_worktree.resolve()),
+            ),
+        )
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(["--repo", str(self.repo.root), "validate"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout.getvalue().strip(), "OK")
+
+    def test_validate_rejects_project_document_with_non_git_worktree(self) -> None:
+        from scripts.kg.app import main
+
+        non_git_worktree = self.repo.root / "external" / "not-a-repo"
+        non_git_worktree.mkdir(parents=True, exist_ok=True)
+        self.repo.write_file(
+            "projects/alpha/README.md",
+            self.project_document(
+                title="Alpha",
+                slug="alpha",
+                document_id="project-1",
+                git_worktree=str(non_git_worktree.resolve()),
+            ),
+        )
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(["--repo", str(self.repo.root), "validate"])
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("git_worktree is not a git working tree", stdout.getvalue())
+
     def note_document(self, title: str | None, slug: str, document_id: str) -> str:
         title_line = f"title: {title}\n" if title is not None else ""
         return textwrap.dedent(
@@ -157,6 +200,29 @@ created_at: 2026-03-11T00:00:00Z
 updated_at: 2026-03-11T00:00:00Z
 status: inbox
 date: {date_value}
+tags: []
+summary: ""
+---
+
+Body
+"""
+        )
+
+    def project_document(
+        self, title: str, slug: str, document_id: str, git_worktree: str
+    ) -> str:
+        return textwrap.dedent(
+            f"""\
+---
+id: {document_id}
+type: project
+title: {title}
+slug: {slug}
+created_at: 2026-03-11T00:00:00Z
+updated_at: 2026-03-11T00:00:00Z
+status: inbox
+git_worktree: {git_worktree}
+theme: []
 tags: []
 summary: ""
 ---

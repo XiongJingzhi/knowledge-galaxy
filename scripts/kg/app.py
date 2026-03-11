@@ -11,6 +11,8 @@ from .core.repository import (
     daily_path,
     decision_path,
     note_path,
+    project_path,
+    resolve_git_worktree,
     resolve_repo_root,
     review_path,
     slugify,
@@ -43,6 +45,10 @@ def build_parser() -> argparse.ArgumentParser:
     review_parser = create_subparsers.add_parser("review")
     review_parser.add_argument("--title", required=True)
     review_parser.add_argument("--date")
+
+    project_parser = create_subparsers.add_parser("project")
+    project_parser.add_argument("--title", required=True)
+    project_parser.add_argument("--git-worktree", required=True)
 
     list_parser = subparsers.add_parser("list")
     list_parser.add_argument("--type")
@@ -135,6 +141,19 @@ def run(args: argparse.Namespace) -> int:
                 title=args.title,
                 target_path=review_path(repo_root, slug),
                 extra_replacements={"date": target_date.isoformat(), "slug": slug},
+            )
+        elif args.create_type == "project":
+            slug = slugify(args.title)
+            git_worktree = resolve_git_worktree(args.git_worktree)
+            created_path = create_document(
+                repo_root=repo_root,
+                template_name="project",
+                title=args.title,
+                target_path=project_path(repo_root, slug),
+                extra_replacements={
+                    "git_worktree": str(git_worktree),
+                    "slug": slug,
+                },
             )
         else:
             raise CommandError("Unsupported create type")

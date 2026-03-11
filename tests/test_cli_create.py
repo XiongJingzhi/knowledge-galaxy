@@ -114,3 +114,32 @@ class KGCreateTests(unittest.TestCase):
         content = review_path.read_text(encoding="utf-8")
         self.assertIn("date: 2026-03-11", content)
         self.assertIn("reviews/weekly-review.md", stdout.getvalue().strip())
+
+    def test_create_project_uses_project_directory_and_git_worktree(self) -> None:
+        from scripts.kg.app import main
+
+        git_worktree = self.repo.create_git_worktree("external/alpha")
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(
+                [
+                    "--repo",
+                    str(self.repo.root),
+                    "create",
+                    "project",
+                    "--title",
+                    "Alpha",
+                    "--git-worktree",
+                    str(git_worktree),
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+
+        project_path = self.repo.root / "projects" / "alpha" / "README.md"
+        self.assertTrue(project_path.exists())
+        content = project_path.read_text(encoding="utf-8")
+        self.assertIn("type: project", content)
+        self.assertIn(f"git_worktree: {git_worktree.resolve()}", content)
+        self.assertIn("projects/alpha/README.md", stdout.getvalue().strip())

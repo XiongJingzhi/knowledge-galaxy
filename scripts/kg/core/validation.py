@@ -5,13 +5,14 @@ from pathlib import Path
 import re
 
 from .frontmatter import parse_frontmatter_file
+from .repository import is_git_worktree
 
 
-ALLOWED_TYPES = {"daily", "note", "decision", "review"}
+ALLOWED_TYPES = {"daily", "note", "decision", "review", "project"}
 ALLOWED_STATUSES = {"inbox", "active", "evergreen", "archived"}
 REQUIRED_FIELDS = {"id", "type", "title", "slug", "created_at", "updated_at", "status"}
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-CONTENT_ROOTS = ("notes", "dailies", "decisions", "reviews")
+CONTENT_ROOTS = ("notes", "dailies", "decisions", "reviews", "projects")
 
 
 def validate_repository(repo_root: Path) -> list[str]:
@@ -48,6 +49,8 @@ def validate_repository(repo_root: Path) -> list[str]:
             validate_daily_document(relative_path, metadata, errors)
         else:
             validate_slug_path(relative_path, document_type, slug, errors)
+            if document_type == "project":
+                validate_project_document(relative_path, metadata, errors)
 
         document_id = stringify(metadata.get("id"))
         if document_id:
@@ -78,6 +81,11 @@ def validate_slug_path(
         "decision": "decisions/",
         "review": "reviews/",
     }
+    if document_type == "project":
+        expected_path = Path("projects") / slug / "README.md"
+        if relative_path != expected_path.as_posix():
+            errors.append(f"{relative_path}: invalid path for type: {document_type}")
+        return
     prefix = expected_prefixes.get(document_type)
     if prefix is None:
         return
@@ -104,6 +112,21 @@ def validate_daily_document(
     slug = stringify(metadata.get("slug"))
     if slug != date_value:
         errors.append(f"{relative_path}: daily slug must match date")
+
+
+def validate_project_document(
+    relative_path: str, metadata: dict[str, object], errors: list[str]
+) -> None:
+    git_worktree = stringify(metadata.get("git_worktree"))
+    if not git_worktree:
+        return
+
+    worktree_path = Path(git_worktree).expanduser()
+    if not worktree_path.exists() or not worktree_path.is_dir():
+        errors.append(f"{relative_path}: git_worktree path does not exist")
+        return
+    if not is_git_worktree(worktree_path.resolve()):
+        errors.append(f"{relative_path}: git_worktree is not a git working tree")
 
 
 def stringify(value: object | None) -> str:
