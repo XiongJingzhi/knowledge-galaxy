@@ -191,3 +191,15 @@ If you need language-specific runtime guidance, it is better to add local README
 
 - `docs/specs/repository-layout.md` 描述当前仓库结构和标准入口。
 - `docs/plans/` 下的历史文件可能仍会提到 2026-03-11 之前的目录布局，例如 `scripts/kg` 或 `packages/rust`。这些内容应视为历史变更记录，而不是当前使用说明。
+
+## Skill Distribution / Skill 分发
+
+This repository includes a distributable agent skill at `skills/knowledge-galaxy-cli/SKILL.md`.
+
+这个仓库还包含一份可分发的 agent skill，位置在 `skills/knowledge-galaxy-cli/SKILL.md`。
+
+If you want to install it into another agent environment, see:
+
+如果你想把它安装到别人的 agent 环境里，请查看：
+
+- `skills/knowledge-galaxy-cli/INSTALL.md`
