@@ -16,6 +16,7 @@ docs/
   requirements/
   specs/
   tasks/
+templates/
 dailies/
 notes/
 decisions/
@@ -32,6 +33,7 @@ scripts/
 ### 2.1 Directory Rules
 
 - `docs/` stores planning and product documentation.
+- `templates/` stores reusable document templates for manual creation and future CLI generation.
 - `dailies/` stores daily notes at `dailies/YYYY/MM/DD.md`.
 - `notes/` stores standalone knowledge notes.
 - `decisions/` stores decision records.
@@ -182,7 +184,51 @@ The system should also support:
 - theme distribution
 - tag frequency
 
-## 7. CLI 1.0 Boundary
+## 7. Template Rules
+
+Knowledge Galaxy 1.0 uses plain Markdown templates as the document creation baseline.
+
+### 7.1 Location
+
+Templates live in:
+
+`templates/`
+
+### 7.2 Files
+
+The template set should include:
+
+- `templates/daily.md`
+- `templates/note.md`
+- `templates/decision.md`
+- `templates/review.md`
+- `templates/reference.md`
+- `templates/theme.md`
+- `templates/project.md`
+
+### 7.3 Format
+
+Each template should:
+
+- begin with YAML frontmatter
+- follow the shared field order from this specification
+- use plain-text placeholder tokens
+- include only minimal body headings
+
+### 7.4 Placeholder Style
+
+Recommended placeholder tokens include:
+
+- `<id>`
+- `<title>`
+- `<slug>`
+- `<created_at>`
+- `<updated_at>`
+- `<date>`
+
+The 1.0 template layer does not require a template engine.
+
+## 8. CLI 1.0 Boundary
 
 The CLI executable name is `kg`.
 
@@ -204,7 +250,7 @@ The 1.0 command surface should cover:
 
 CLI output should be short, parseable, and suitable for scripting.
 
-## 8. Non-Goals
+## 9. Non-Goals
 
 Knowledge Galaxy 1.0 does not implement:
 
@@ -218,6 +264,6 @@ Knowledge Galaxy 1.0 does not implement:
 
 These concerns belong to downstream AI applications.
 
-## 9. Success Conditions
+## 10. Success Conditions
 
 The repository is successful when an external RAG or agent system can consume the Markdown corpus with predictable paths and metadata, then build its own retrieval or inference layer without needing proprietary preprocessing from Knowledge Galaxy.

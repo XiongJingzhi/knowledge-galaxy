@@ -16,9 +16,10 @@ The remaining tasks stay pending until explicit confirmation.
 
 ## Phase 2. Document Templates
 
-- [ ] Define Markdown templates for `daily`, `note`, `decision`, `review`, `reference`, `theme`, and `project`
+- [ ] Create a top-level `templates/` directory for reusable document templates
+- [ ] Define one Markdown template for `daily`, `note`, `decision`, `review`, `reference`, `theme`, and `project`
 - [ ] Define required and optional frontmatter examples for each template
-- [ ] Add sample template files under a dedicated template location
+- [ ] Standardize plain-text placeholder tokens for future `kg create` substitution
 
 ## Phase 3. CLI Foundation
 
