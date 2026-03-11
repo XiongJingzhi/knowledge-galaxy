@@ -1,0 +1,1 @@
+"""Knowledge Galaxy CLI package."""
