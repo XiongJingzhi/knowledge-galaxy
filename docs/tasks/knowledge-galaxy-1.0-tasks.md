@@ -16,10 +16,10 @@ The remaining tasks stay pending until explicit confirmation.
 
 ## Phase 2. Document Templates
 
-- [ ] Create a top-level `templates/` directory for reusable document templates
-- [ ] Define one Markdown template for `daily`, `note`, `decision`, `review`, `reference`, `theme`, and `project`
-- [ ] Define required and optional frontmatter examples for each template
-- [ ] Standardize plain-text placeholder tokens for future `kg create` substitution
+- [x] Create a top-level `templates/` directory for reusable document templates (`templates/` with `.gitkeep`)
+- [x] Provide one Markdown template per type: `daily`, `note`, `decision`, `review`, `reference`, `theme`, `project` (see `templates/*.md`)
+- [x] Include required/optional frontmatter blocks in each template, following the spec field order
+- [x] Standardize plain-text placeholders (`<id>`, `<title>`, `<slug>`, `<created_at>`, `<updated_at>`, `<date>`) for future `kg create` substitution
 
 ## Phase 3. CLI Foundation
 
