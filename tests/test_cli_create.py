@@ -42,6 +42,35 @@ class KGCreateTests(unittest.TestCase):
         self.assertNotIn("<updated_at>", content)
         self.assertIn("notes/test-note.md", stdout.getvalue().strip())
 
+    def test_create_note_falls_back_to_builtin_template(self) -> None:
+        from implementations.python.kg.app import main
+
+        (self.repo.root / "templates" / "note.md").unlink()
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(
+                [
+                    "--repo",
+                    str(self.repo.root),
+                    "create",
+                    "note",
+                    "--title",
+                    "Test Note",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+
+        note_path = self.repo.root / "notes" / "test-note.md"
+        self.assertTrue(note_path.exists())
+
+        content = note_path.read_text(encoding="utf-8")
+        self.assertIn("title: Test Note", content)
+        self.assertIn("slug: test-note", content)
+        self.assertIn("## Summary", content)
+        self.assertIn("notes/test-note.md", stdout.getvalue().strip())
+
     def test_create_daily_uses_date_path(self) -> None:
         from implementations.python.kg.app import main
 

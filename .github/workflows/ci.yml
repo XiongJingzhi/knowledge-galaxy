@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run repository tests
+        run: make test
+
+  build-go:
+    name: Build Go (${{ matrix.goos }}-${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+            artifact_name: kg-go-darwin-amd64
+            output_name: kg-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            artifact_name: kg-go-darwin-arm64
+            output_name: kg-darwin-arm64
+          - goos: linux
+            goarch: amd64
+            artifact_name: kg-go-linux-amd64
+            output_name: kg-linux-amd64
+          - goos: linux
+            goarch: arm64
+            artifact_name: kg-go-linux-arm64
+            output_name: kg-linux-arm64
+          - goos: windows
+            goarch: amd64
+            artifact_name: kg-go-windows-amd64
+            output_name: kg-windows-amd64.exe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Build Go binary
+        run: |
+          mkdir -p dist/go
+          cd implementations/go/kg
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} GO111MODULE=on go build -o "${{ github.workspace }}/dist/go/${{ matrix.output_name }}" ./cmd/kg
+
+      - name: Upload Go artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/go/${{ matrix.output_name }}
+
+  build-rust:
+    name: Build Rust (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            runner: macos-latest
+            artifact_name: kg-rust-darwin-amd64
+            output_name: kg-darwin-amd64
+            bin_path: implementations/rust/kg/target/x86_64-apple-darwin/release/kg
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+            artifact_name: kg-rust-darwin-arm64
+            output_name: kg-darwin-arm64
+            bin_path: implementations/rust/kg/target/aarch64-apple-darwin/release/kg
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            artifact_name: kg-rust-linux-amd64
+            output_name: kg-linux-amd64
+            bin_path: implementations/rust/kg/target/x86_64-unknown-linux-gnu/release/kg
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            artifact_name: kg-rust-linux-arm64
+            output_name: kg-linux-arm64
+            bin_path: implementations/rust/kg/target/aarch64-unknown-linux-gnu/release/kg
+          - target: x86_64-pc-windows-gnu
+            runner: ubuntu-latest
+            artifact_name: kg-rust-windows-amd64
+            output_name: kg-windows-amd64.exe
+            bin_path: implementations/rust/kg/target/x86_64-pc-windows-gnu/release/kg.exe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux ARM64 linker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Install MinGW linker
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Build Rust binary
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: x86_64-w64-mingw32-gcc
+        run: |
+          mkdir -p dist/rust
+          cargo build --release --manifest-path implementations/rust/kg/Cargo.toml --target "${{ matrix.target }}"
+          cp "${{ matrix.bin_path }}" "dist/rust/${{ matrix.output_name }}"
+
+      - name: Upload Rust artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/rust/${{ matrix.output_name }}

@@ -16,6 +16,142 @@ import (
 	"time"
 )
 
+var builtinTemplates = map[string]string{
+	"daily": `---
+id: <id>
+type: daily
+title: <title>
+slug: <slug>
+created_at: <created_at>
+updated_at: <updated_at>
+status: inbox
+date: <date>
+tags: []
+summary: ""
+---
+
+## Notes
+
+## Decisions
+
+## Next
+`,
+	"decision": `---
+id: <id>
+type: decision
+title: <title>
+slug: <slug>
+created_at: <created_at>
+updated_at: <updated_at>
+status: inbox
+theme: []
+project: []
+tags: []
+summary: ""
+---
+
+## Context
+
+## Decision
+
+## Consequences
+`,
+	"note": `---
+id: <id>
+type: note
+title: <title>
+slug: <slug>
+created_at: <created_at>
+updated_at: <updated_at>
+status: inbox
+theme: []
+project: []
+tags: []
+summary: ""
+---
+
+## Summary
+
+## Details
+`,
+	"project": `---
+id: <id>
+type: project
+title: <title>
+slug: <slug>
+created_at: <created_at>
+updated_at: <updated_at>
+status: inbox
+git_worktree: <git_worktree>
+theme: []
+tags: []
+summary: ""
+---
+
+## Goal
+
+## Status
+
+## Notes
+`,
+	"reference": `---
+id: <id>
+type: reference
+title: <title>
+slug: <slug>
+created_at: <created_at>
+updated_at: <updated_at>
+status: inbox
+source: []
+theme: []
+project: []
+tags: []
+summary: ""
+---
+
+## Source
+
+## Notes
+`,
+	"review": `---
+id: <id>
+type: review
+title: <title>
+slug: <slug>
+created_at: <created_at>
+updated_at: <updated_at>
+status: inbox
+date: <date>
+theme: []
+project: []
+tags: []
+summary: ""
+---
+
+## What Happened
+
+## What Worked
+
+## What To Change
+`,
+	"theme": `---
+id: <id>
+type: theme
+title: <title>
+slug: <slug>
+created_at: <created_at>
+updated_at: <updated_at>
+status: inbox
+tags: []
+summary: ""
+---
+
+## Scope
+
+## Key Questions
+`,
+}
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
@@ -220,8 +356,12 @@ func createFromTemplate(repoRoot, name string, repl map[string]string, target st
 	tpl := filepath.Join(repoRoot, "templates", name+".md")
 	b, err := os.ReadFile(tpl)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		return 1
+		fallback, ok := builtinTemplates[name]
+		if !ok {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
+		b = []byte(fallback)
 	}
 	text := string(b)
 	for k, v := range repl {

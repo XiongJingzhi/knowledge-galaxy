@@ -1,8 +1,155 @@
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn builtin_template(name: &str) -> Option<&'static str> {
+    match name {
+        "daily" => Some(
+            "---\n\
+id: <id>\n\
+type: daily\n\
+title: <title>\n\
+slug: <slug>\n\
+created_at: <created_at>\n\
+updated_at: <updated_at>\n\
+status: inbox\n\
+date: <date>\n\
+tags: []\n\
+summary: \"\"\n\
+---\n\
+\n\
+## Notes\n\
+\n\
+## Decisions\n\
+\n\
+## Next\n",
+        ),
+        "decision" => Some(
+            "---\n\
+id: <id>\n\
+type: decision\n\
+title: <title>\n\
+slug: <slug>\n\
+created_at: <created_at>\n\
+updated_at: <updated_at>\n\
+status: inbox\n\
+theme: []\n\
+project: []\n\
+tags: []\n\
+summary: \"\"\n\
+---\n\
+\n\
+## Context\n\
+\n\
+## Decision\n\
+\n\
+## Consequences\n",
+        ),
+        "note" => Some(
+            "---\n\
+id: <id>\n\
+type: note\n\
+title: <title>\n\
+slug: <slug>\n\
+created_at: <created_at>\n\
+updated_at: <updated_at>\n\
+status: inbox\n\
+theme: []\n\
+project: []\n\
+tags: []\n\
+summary: \"\"\n\
+---\n\
+\n\
+## Summary\n\
+\n\
+## Details\n",
+        ),
+        "project" => Some(
+            "---\n\
+id: <id>\n\
+type: project\n\
+title: <title>\n\
+slug: <slug>\n\
+created_at: <created_at>\n\
+updated_at: <updated_at>\n\
+status: inbox\n\
+git_worktree: <git_worktree>\n\
+theme: []\n\
+tags: []\n\
+summary: \"\"\n\
+---\n\
+\n\
+## Goal\n\
+\n\
+## Status\n\
+\n\
+## Notes\n",
+        ),
+        "reference" => Some(
+            "---\n\
+id: <id>\n\
+type: reference\n\
+title: <title>\n\
+slug: <slug>\n\
+created_at: <created_at>\n\
+updated_at: <updated_at>\n\
+status: inbox\n\
+source: []\n\
+theme: []\n\
+project: []\n\
+tags: []\n\
+summary: \"\"\n\
+---\n\
+\n\
+## Source\n\
+\n\
+## Notes\n",
+        ),
+        "review" => Some(
+            "---\n\
+id: <id>\n\
+type: review\n\
+title: <title>\n\
+slug: <slug>\n\
+created_at: <created_at>\n\
+updated_at: <updated_at>\n\
+status: inbox\n\
+date: <date>\n\
+theme: []\n\
+project: []\n\
+tags: []\n\
+summary: \"\"\n\
+---\n\
+\n\
+## What Happened\n\
+\n\
+## What Worked\n\
+\n\
+## What To Change\n",
+        ),
+        "theme" => Some(
+            "---\n\
+id: <id>\n\
+type: theme\n\
+title: <title>\n\
+slug: <slug>\n\
+created_at: <created_at>\n\
+updated_at: <updated_at>\n\
+status: inbox\n\
+tags: []\n\
+summary: \"\"\n\
+---\n\
+\n\
+## Scope\n\
+\n\
+## Key Questions\n",
+        ),
+        _ => None,
+    }
+}
 
 fn main() {
     std::process::exit(run(std::env::args().skip(1).collect()));
@@ -95,6 +242,45 @@ fn dirs_home() -> Option<String> {
     None
 }
 
+fn now_unix_seconds() -> i64 {
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs() as i64,
+        Err(_) => 0,
+    }
+}
+
+fn civil_from_days(days: i64) -> (i32, u32, u32) {
+    let z = days + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = mp + if mp < 10 { 3 } else { -9 };
+    let year = y + if m <= 2 { 1 } else { 0 };
+    (year as i32, m as u32, d as u32)
+}
+
+fn format_utc_timestamp(unix_seconds: i64) -> String {
+    let days = unix_seconds.div_euclid(86_400);
+    let seconds_of_day = unix_seconds.rem_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    let hour = seconds_of_day / 3_600;
+    let minute = (seconds_of_day % 3_600) / 60;
+    let second = seconds_of_day % 60;
+    format!(
+        "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z"
+    )
+}
+
+fn format_utc_date(unix_seconds: i64) -> String {
+    let days = unix_seconds.div_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    format!("{year:04}-{month:02}-{day:02}")
+}
+
 // A tiny env expander without external deps
 fn shellexpand_env(s: &str) -> String {
     let mut out = String::new();
@@ -129,18 +315,11 @@ fn slugify(s: &str) -> Result<String, String> {
 }
 
 fn timestamp_utc_rfc3339() -> String {
-    // Avoid external crates: ask the OS date(1)
-    match Command::new("date").args(["-u", "+%Y-%m-%dT%H:%M:%SZ"]).output() {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_string(),
-        _ => "1970-01-01T00:00:00Z".to_string(),
-    }
+    format_utc_timestamp(now_unix_seconds())
 }
 
 fn today_yyyy_mm_dd() -> String {
-    match Command::new("date").args(["-u", "+%Y-%m-%d"]).output() {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_string(),
-        _ => "1970-01-01".to_string(),
-    }
+    format_utc_date(now_unix_seconds())
 }
 
 fn rel_path(root: &Path, p: &Path) -> String {
@@ -240,7 +419,13 @@ fn cmd_create(repo_root: &Path, args: &[String]) -> i32 {
 fn create_from_template(repo_root: &Path, name: &str, repl: &std::collections::BTreeMap<String,String>, target: &Path) -> i32 {
     if target.exists() { eprintln!("Target file already exists: {}", target.display()); return 1; }
     let tpl = repo_root.join("templates").join(format!("{}.md", name));
-    let Ok(mut text) = fs::read_to_string(&tpl) else { eprintln!("{}", io_err(&tpl)); return 1; };
+    let mut text = match fs::read_to_string(&tpl) {
+        Ok(text) => text,
+        Err(_) => match builtin_template(name) {
+            Some(template) => template.to_string(),
+            None => { eprintln!("{}", io_err(&tpl)); return 1; }
+        },
+    };
     for (k, v) in repl.iter() { text = text.replace(&format!("<{}>", k), v); }
     if let Some(dir) = target.parent() { if let Err(e) = fs::create_dir_all(dir) { eprintln!("{}", e); return 1; } }
     if let Err(e) = fs::write(target, text.as_bytes()) { eprintln!("{}", e); return 1; }
@@ -518,5 +703,22 @@ fn new_uuid() -> String {
     format!("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}", (t & 0xffffffff) as u64, ((t>>32)&0xffff) as u64, ((t>>48)&0xffff) as u64, ((t>>16)&0xffff) as u64, (t & 0xffffffffffff) as u128)
 }
 
-// --- small deps (tiny crates, build-time only) ---
-// We inline minimal helpers via tiny crates included as build-time dependencies using vendored sources if available.
+#[cfg(test)]
+mod tests {
+    use super::{format_utc_date, format_utc_timestamp};
+
+    #[test]
+    fn formats_unix_epoch_timestamp() {
+        assert_eq!(format_utc_timestamp(0), "1970-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn formats_known_calendar_day() {
+        assert_eq!(format_utc_date(1_741_651_200), "2025-03-11");
+    }
+
+    #[test]
+    fn formats_known_timestamp() {
+        assert_eq!(format_utc_timestamp(1_741_651_261), "2025-03-11T00:01:01Z");
+    }
+}

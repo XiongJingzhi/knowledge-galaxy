@@ -79,7 +79,13 @@ Use the root `Makefile` to build the Go and Rust binaries.
 ```bash
 make build-go
 make build-rust
+make build-go-cross
+make build-rust-cross
 ```
+
+Cross-platform build outputs are written under `dist/`.
+
+跨平台构建产物会输出到 `dist/` 目录。
 
 Direct implementation entrypoints:
 
@@ -95,10 +101,12 @@ cd implementations/rust/kg && cargo build
 
 - Python is the only implementation currently covered by the repository's end-to-end unit tests.
 - Go and Rust are kept in-tree as parallel CLI implementations and can be built independently from their language-specific roots.
+- Go and Rust can also be built for multiple target platforms from the root `Makefile`.
 - `--repo <path>` is required for CLI operations. This repository contains tooling code, tests, templates, and docs, not the managed knowledge content itself.
 
 - 当前只有 Python 实现被仓库内的端到端单元测试完整覆盖。
 - Go 和 Rust 作为并行 CLI 实现保留在仓库中，可以从各自语言目录独立构建。
+- Go 和 Rust 也可以通过根目录 `Makefile` 构建多平台目标产物。
 - CLI 操作要求传入 `--repo <path>`。这个仓库本身只保存工具代码、测试、模板和文档，不保存被管理的知识内容。
 
 ## Python CLI Usage / Python CLI 用法
