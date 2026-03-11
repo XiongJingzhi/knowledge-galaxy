@@ -1,5 +1,7 @@
 # Knowledge Galaxy Go Port Design
 
+> Historical note: this design reflects the repository layout before 2026-03-11. The current Go implementation root is `implementations/go/kg`.
+
 Date: 2026-03-11
 
 Goal: Re-implement the Knowledge Galaxy CLI in Go while keeping the existing Python CLI and tests intact. Provide a clean directory structure, reproducible builds, and feature parity for create, validate, list, search, stats, and project git-remote operations.
@@ -27,4 +29,3 @@ Testing:
 
 Error Handling:
 - Return non-zero exit and short error messages on invalid args, missing paths, git failures, or validation errors.
-

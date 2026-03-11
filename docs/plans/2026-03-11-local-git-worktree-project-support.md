@@ -1,5 +1,7 @@
 # Local Git Worktree Project Support Implementation Plan
 
+> Historical note: this plan reflects the repository layout before 2026-03-11. Current implementation paths live under `implementations/python/kg`, `implementations/go/kg`, and `implementations/rust/kg`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add `project` document creation backed by an already existing local git working directory path, without implementing any remote management.

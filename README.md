@@ -17,6 +17,8 @@ Makefile
 
 The Python CLI remains the most complete end-to-end interface. The root `Makefile` exposes aggregate build and verification commands for all implementations.
 
+Current layout and entrypoint details also live in `docs/specs/repository-layout.md`.
+
 ## Requirements
 
 - Python 3
@@ -29,6 +31,22 @@ python3 -m implementations.python.kg --help
 make test-python
 make test-go
 make test-rust
+```
+
+## Build Entrypoints
+
+```bash
+make build-go
+make build-rust
+make test
+```
+
+Direct implementation entrypoints:
+
+```bash
+python3 -m implementations.python.kg --help
+cd implementations/go/kg && go build ./cmd/kg
+cd implementations/rust/kg && cargo build
 ```
 
 Note: `--repo <path>` is REQUIRED. The CLI only operates on an external repository path. This repository contains only tooling code, tests, templates, and docs.
@@ -76,3 +94,8 @@ python3 -m implementations.python.kg --repo /path/to/content-repo stats
 ```
 
 `list`, `search`, and `stats` rebuild the SQLite index under the specified `--repo` path.
+
+## Documentation Notes
+
+- `docs/specs/repository-layout.md` describes the current repository layout and canonical entrypoints.
+- Historical files under `docs/plans/` may mention the pre-2026-03-11 layout such as `scripts/kg` or `packages/rust`. Treat those as change history, not current usage docs.

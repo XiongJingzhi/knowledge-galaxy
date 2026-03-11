@@ -1,4 +1,7 @@
 # Pure Tool Repo Refactor Implementation Plan
+
+> Historical note: this plan reflects the repository layout before 2026-03-11. Current implementation paths live under `implementations/python/kg`, `implementations/go/kg`, and `implementations/rust/kg`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Convert repo into a pure tooling repository; keep only source, tests, templates, docs. Enforce CLI to operate only on external repos via --repo.

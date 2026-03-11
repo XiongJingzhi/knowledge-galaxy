@@ -1,5 +1,7 @@
 # Knowledge Galaxy CLI MVP Implementation Plan
 
+> Historical note: this plan reflects the repository layout before 2026-03-11. Current implementation paths live under `implementations/python/kg`, `implementations/go/kg`, and `implementations/rust/kg`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Build a Python MVP of the `kg` CLI that can create documents from templates, validate repository documents, and provide basic list, search, and stats commands backed by a derived SQLite index.

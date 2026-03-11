@@ -1,5 +1,7 @@
 # Knowledge Galaxy CLI MVP Design
 
+> Historical note: this document reflects the repository layout before 2026-03-11. Current implementation paths live under `implementations/python/kg`, `implementations/go/kg`, and `implementations/rust/kg`.
+
 **Date:** 2026-03-11
 
 ## Goal
