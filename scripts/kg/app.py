@@ -8,11 +8,15 @@ from typing import Sequence
 from .core.frontmatter import generate_document_id, utc_timestamp
 from .core.indexer import rebuild_index
 from .core.repository import (
+    add_git_remote,
     daily_path,
     decision_path,
+    fetch_git_remote,
     note_path,
+    push_git_remote,
     project_path,
     resolve_git_worktree,
+    resolve_project_git_worktree,
     resolve_repo_root,
     review_path,
     slugify,
@@ -32,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     create_parser = subparsers.add_parser("create")
     create_subparsers = create_parser.add_subparsers(dest="create_type")
+    create_subparsers.required = True
 
     note_parser = create_subparsers.add_parser("note")
     note_parser.add_argument("--title", required=True)
@@ -49,6 +54,29 @@ def build_parser() -> argparse.ArgumentParser:
     project_parser = create_subparsers.add_parser("project")
     project_parser.add_argument("--title", required=True)
     project_parser.add_argument("--git-worktree", required=True)
+
+    project_ops_parser = subparsers.add_parser("project")
+    project_ops_subparsers = project_ops_parser.add_subparsers(dest="project_command")
+    project_ops_subparsers.required = True
+
+    add_remote_parser = project_ops_subparsers.add_parser("add-remote")
+    add_remote_parser.add_argument("--project", required=True)
+    add_remote_parser.add_argument("--name", required=True)
+    add_remote_parser.add_argument("--url", required=True)
+
+    fetch_parser = project_ops_subparsers.add_parser("fetch")
+    fetch_parser.add_argument("--project", required=True)
+    fetch_parser.add_argument("--remote", default="origin")
+
+    push_parser = project_ops_subparsers.add_parser("push")
+    push_parser.add_argument("--project", required=True)
+    push_parser.add_argument("--remote", default="origin")
+    push_parser.add_argument("--branch")
+
+    sync_parser = project_ops_subparsers.add_parser("sync")
+    sync_parser.add_argument("--project", required=True)
+    sync_parser.add_argument("--remote", default="origin")
+    sync_parser.add_argument("--branch")
 
     list_parser = subparsers.add_parser("list")
     list_parser.add_argument("--type")
@@ -168,6 +196,31 @@ def run(args: argparse.Namespace) -> int:
             return 1
         print("OK")
         return 0
+    if args.command == "project":
+        repo_root = resolve_repo_root(args.repo)
+        try:
+            git_worktree = resolve_project_git_worktree(repo_root, args.project)
+            if args.project_command == "add-remote":
+                configured_url = add_git_remote(git_worktree, args.name, args.url)
+                print(f"{args.project}\tremote-added\t{args.name}\t{configured_url}")
+                return 0
+            if args.project_command == "fetch":
+                fetch_git_remote(git_worktree, args.remote)
+                print(f"{args.project}\tfetched\t{args.remote}")
+                return 0
+            if args.project_command == "push":
+                branch = push_git_remote(git_worktree, args.remote, args.branch)
+                print(f"{args.project}\tpushed\t{args.remote}\t{branch}")
+                return 0
+            if args.project_command == "sync":
+                fetch_git_remote(git_worktree, args.remote)
+                branch = push_git_remote(git_worktree, args.remote, args.branch)
+                print(f"{args.project}\tfetched\t{args.remote}")
+                print(f"{args.project}\tpushed\t{args.remote}\t{branch}")
+                return 0
+            raise CommandError("Unsupported project command")
+        except (FileNotFoundError, RuntimeError, ValueError) as exc:
+            raise CommandError(str(exc)) from exc
     if args.command in {"list", "search", "stats"}:
         repo_root = resolve_repo_root(args.repo)
         index_path = rebuild_index(repo_root)

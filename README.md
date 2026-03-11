@@ -27,7 +27,18 @@ python3 -m scripts.kg --repo /path/to/content-repo create project --title "Atlas
 
 Each command prints the created relative path.
 
-`create project` only accepts an already existing local git working directory. The CLI does not clone repositories or manage remotes, fetch, pull, or push.
+`create project` only accepts an already existing local git working directory. The CLI still does not clone repositories or merge/pull changes, but it can manage remotes and run project-scoped `fetch`, `push`, and `sync`.
+
+## Operate Project Repositories
+
+```bash
+python3 -m scripts.kg --repo /path/to/content-repo project add-remote --project atlas --name origin --url git@github.com:org/atlas.git
+python3 -m scripts.kg --repo /path/to/content-repo project fetch --project atlas --remote origin
+python3 -m scripts.kg --repo /path/to/content-repo project push --project atlas --remote origin
+python3 -m scripts.kg --repo /path/to/content-repo project sync --project atlas --remote origin
+```
+
+These commands resolve the project's `git_worktree` from `projects/<slug>/README.md` and run the matching git operation against that external repository.
 
 ## Validate Repository Content
 

@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 import subprocess
 
+from .frontmatter import parse_frontmatter_file
+
 
 SLUG_PARTS_PATTERN = re.compile(r"[^a-z0-9]+")
 
@@ -34,6 +36,55 @@ def is_git_worktree(path: Path) -> bool:
         check=False,
     )
     return result.returncode == 0 and result.stdout.strip() == "true"
+
+
+def resolve_project_git_worktree(repo_root: Path, slug: str) -> Path:
+    project_readme = project_path(repo_root, slug)
+    if not project_readme.exists():
+        raise FileNotFoundError(f"Project document does not exist: {project_readme}")
+
+    metadata, _body = parse_frontmatter_file(project_readme)
+    git_worktree = str(metadata.get("git_worktree", "")).strip()
+    if not git_worktree:
+        raise ValueError(f"Project document is missing git_worktree: {project_readme}")
+
+    return resolve_git_worktree(git_worktree)
+
+
+def add_git_remote(worktree: Path, name: str, url: str) -> str:
+    run_git_command(worktree, "remote", "add", name, url)
+    return url
+
+
+def fetch_git_remote(worktree: Path, remote: str) -> None:
+    run_git_command(worktree, "fetch", remote, "--prune")
+
+
+def push_git_remote(worktree: Path, remote: str, branch: str | None = None) -> str:
+    target_branch = branch or current_git_branch(worktree)
+    run_git_command(worktree, "push", "-u", remote, target_branch)
+    return target_branch
+
+
+def current_git_branch(worktree: Path) -> str:
+    branch = run_git_command(worktree, "branch", "--show-current")
+    if not branch:
+        raise ValueError(f"Git worktree is not on a branch: {worktree}")
+    return branch
+
+
+def run_git_command(worktree: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=worktree,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or result.stdout.strip() or "git command failed"
+        raise RuntimeError(stderr)
+    return result.stdout.strip()
 
 
 def slugify(value: str) -> str:

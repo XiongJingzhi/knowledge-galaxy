@@ -122,7 +122,7 @@ class TemporaryRepo:
         path.write_text(content, encoding="utf-8")
         return path
 
-    def create_git_worktree(self, relative_path: str) -> Path:
+    def create_git_worktree(self, relative_path: str, with_commit: bool = False) -> Path:
         worktree = self.root / relative_path
         worktree.mkdir(parents=True, exist_ok=True)
         subprocess.run(
@@ -132,7 +132,66 @@ class TemporaryRepo:
             capture_output=True,
             text=True,
         )
+        self.configure_git_identity(worktree)
+        if with_commit:
+            (worktree / "README.md").write_text("# Temp Repo\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "add", "README.md"],
+                cwd=worktree,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "Initial commit"],
+                cwd=worktree,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
         return worktree
+
+    def create_bare_remote(self, relative_path: str) -> Path:
+        remote = self.root / relative_path
+        remote.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["git", "init", "--bare", remote.name],
+            cwd=remote.parent,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return remote
+
+    def clone_remote(self, remote_relative_path: str, clone_relative_path: str) -> Path:
+        remote = self.root / remote_relative_path
+        clone = self.root / clone_relative_path
+        clone.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["git", "clone", str(remote), str(clone)],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.configure_git_identity(clone)
+        return clone
+
+    def configure_git_identity(self, repo_path: Path) -> None:
+        subprocess.run(
+            ["git", "config", "user.name", "Knowledge Galaxy Tests"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "kg-tests@example.com"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
 
     def cleanup(self) -> None:
         self._temp_dir.cleanup()
