@@ -302,7 +302,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # 2) If KG_USE_GO=1 and bin/kg exists, use Go CLI
     raw_argv = list(argv) if argv is not None else sys.argv[1:]
     if os.environ.get("KG_USE_RUST") == "1":
-        bin_rs = Path(__file__).resolve().parents[2] / "bin" / "kg-rs"
+        bin_rs = Path(__file__).resolve().parents[3] / "bin" / "kg-rs"
         if bin_rs.exists() and os.access(bin_rs, os.X_OK):
             try:
                 result = subprocess.run(
@@ -324,7 +324,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if "--repo" not in raw_argv:
             # tests always pass --repo; keep behavior simple
             pass
-        bin_path = Path(__file__).resolve().parents[2] / "bin" / "kg"
+        bin_path = Path(__file__).resolve().parents[3] / "bin" / "kg"
         if bin_path.exists() and os.access(bin_path, os.X_OK):
             try:
                 result = subprocess.run(

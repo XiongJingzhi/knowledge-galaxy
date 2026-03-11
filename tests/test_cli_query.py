@@ -79,7 +79,7 @@ class KGQueryTests(unittest.TestCase):
         self.assertIn("status:inbox\t3", output)
 
     def run_cli(self, *args: str) -> str:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         stdout = io.StringIO()
         with redirect_stdout(stdout):

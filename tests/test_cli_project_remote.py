@@ -112,7 +112,7 @@ class KGProjectRemoteTests(unittest.TestCase):
         self.assertEqual(remote_branch_head, self.git("rev-parse", "HEAD"))
 
     def run_cli(self, *args: str) -> str:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         stdout = io.StringIO()
         with redirect_stdout(stdout):

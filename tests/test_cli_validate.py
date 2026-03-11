@@ -15,7 +15,7 @@ class KGValidateTests(unittest.TestCase):
         self.repo.cleanup()
 
     def test_validate_returns_zero_for_valid_repository(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         self.repo.write_file(
             "notes/valid-note.md",
@@ -30,7 +30,7 @@ class KGValidateTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue().strip(), "OK")
 
     def test_validate_accepts_repo_argument_after_subcommand(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         self.repo.write_file(
             "notes/valid-note.md",
@@ -45,7 +45,7 @@ class KGValidateTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue().strip(), "OK")
 
     def test_validate_returns_non_zero_for_missing_required_field(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         self.repo.write_file(
             "notes/missing-title.md",
@@ -60,7 +60,7 @@ class KGValidateTests(unittest.TestCase):
         self.assertIn("missing required field: title", stdout.getvalue())
 
     def test_validate_returns_non_zero_for_duplicate_ids(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         shared_id = "duplicate-id"
         self.repo.write_file(
@@ -80,7 +80,7 @@ class KGValidateTests(unittest.TestCase):
         self.assertIn("duplicate id: duplicate-id", stdout.getvalue())
 
     def test_validate_returns_non_zero_for_invalid_daily_path_or_slug(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         self.repo.write_file(
             "dailies/2026/03/not-a-day.md",
@@ -102,7 +102,7 @@ class KGValidateTests(unittest.TestCase):
         self.assertIn("daily slug must match date", output)
 
     def test_validate_accepts_project_document_with_git_worktree(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         git_worktree = self.repo.create_git_worktree("external/alpha")
         self.repo.write_file(
@@ -123,7 +123,7 @@ class KGValidateTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue().strip(), "OK")
 
     def test_validate_rejects_project_document_with_non_git_worktree(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         non_git_worktree = self.repo.root / "external" / "not-a-repo"
         non_git_worktree.mkdir(parents=True, exist_ok=True)

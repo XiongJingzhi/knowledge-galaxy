@@ -14,7 +14,7 @@ class KGCreateTests(unittest.TestCase):
         self.repo.cleanup()
 
     def test_create_note_writes_file(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         stdout = io.StringIO()
         with redirect_stdout(stdout):
@@ -43,7 +43,7 @@ class KGCreateTests(unittest.TestCase):
         self.assertIn("notes/test-note.md", stdout.getvalue().strip())
 
     def test_create_daily_uses_date_path(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         stdout = io.StringIO()
         with redirect_stdout(stdout):
@@ -68,7 +68,7 @@ class KGCreateTests(unittest.TestCase):
         self.assertIn("dailies/2026/03/11.md", stdout.getvalue().strip())
 
     def test_create_decision_uses_slug_path(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         stdout = io.StringIO()
         with redirect_stdout(stdout):
@@ -90,7 +90,7 @@ class KGCreateTests(unittest.TestCase):
         self.assertIn("decisions/pick-sqlite.md", stdout.getvalue().strip())
 
     def test_create_review_uses_slug_path(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         stdout = io.StringIO()
         with redirect_stdout(stdout):
@@ -116,7 +116,7 @@ class KGCreateTests(unittest.TestCase):
         self.assertIn("reviews/weekly-review.md", stdout.getvalue().strip())
 
     def test_create_project_uses_project_directory_and_git_worktree(self) -> None:
-        from scripts.kg.app import main
+        from implementations.python.kg.app import main
 
         git_worktree = self.repo.create_git_worktree("external/alpha")
 
