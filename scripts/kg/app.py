@@ -297,8 +297,28 @@ def normalize_argv(argv: Sequence[str] | None) -> list[str] | None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    # Optional delegation: if KG_USE_GO=1 and bin/kg exists, run Go CLI
+    # Optional delegation order:
+    # 1) If KG_USE_RUST=1 and bin/kg-rs exists, prefer Rust CLI
+    # 2) If KG_USE_GO=1 and bin/kg exists, use Go CLI
     raw_argv = list(argv) if argv is not None else sys.argv[1:]
+    if os.environ.get("KG_USE_RUST") == "1":
+        bin_rs = Path(__file__).resolve().parents[2] / "bin" / "kg-rs"
+        if bin_rs.exists() and os.access(bin_rs, os.X_OK):
+            try:
+                result = subprocess.run(
+                    [str(bin_rs), *raw_argv],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.stdout:
+                    sys.stdout.write(result.stdout)
+                if result.stderr and result.returncode != 0:
+                    sys.stderr.write(result.stderr)
+                return int(result.returncode)
+            except Exception:
+                # Fallback to next delegate on any failure
+                pass
     if os.environ.get("KG_USE_GO") == "1":
         repo_prefix = []
         if "--repo" not in raw_argv:
