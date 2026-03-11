@@ -27,7 +27,7 @@ class CommandError(Exception):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="kg")
-    parser.add_argument("--repo")
+    parser.add_argument("--repo", required=True)
 
     subparsers = parser.add_subparsers(dest="command")
     create_parser = subparsers.add_parser("create")

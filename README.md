@@ -13,16 +13,16 @@ Knowledge Galaxy includes a small Python CLI for creating Markdown documents fro
 python3 -m scripts.kg --help
 ```
 
-Use `--repo <path>` to point the CLI at a different repository root during testing or automation.
+Note: `--repo <path>` is REQUIRED. The CLI only operates on an external repository path. This repository contains only tooling code, tests, templates, and docs.
 
 ## Create Documents
 
 ```bash
-python3 -m scripts.kg create note --title "Test Note"
-python3 -m scripts.kg create daily --date 2026-03-11
-python3 -m scripts.kg create decision --title "Choose SQLite"
-python3 -m scripts.kg create review --title "Weekly Review" --date 2026-03-11
-python3 -m scripts.kg create project --title "Atlas" --git-worktree ~/src/atlas
+python3 -m scripts.kg --repo /path/to/content-repo create note --title "Test Note"
+python3 -m scripts.kg --repo /path/to/content-repo create daily --date 2026-03-11
+python3 -m scripts.kg --repo /path/to/content-repo create decision --title "Choose SQLite"
+python3 -m scripts.kg --repo /path/to/content-repo create review --title "Weekly Review" --date 2026-03-11
+python3 -m scripts.kg --repo /path/to/content-repo create project --title "Atlas" --git-worktree ~/src/atlas
 ```
 
 Each command prints the created relative path.
@@ -32,7 +32,7 @@ Each command prints the created relative path.
 ## Validate Repository Content
 
 ```bash
-python3 -m scripts.kg validate
+python3 -m scripts.kg --repo /path/to/content-repo validate
 ```
 
 The command prints `OK` when the repository is valid. Validation errors are printed one per line and the command exits non-zero.
@@ -40,10 +40,10 @@ The command prints `OK` when the repository is valid. Validation errors are prin
 ## Query The Repository
 
 ```bash
-python3 -m scripts.kg list
-python3 -m scripts.kg list --type note
-python3 -m scripts.kg search idea
-python3 -m scripts.kg stats
+python3 -m scripts.kg --repo /path/to/content-repo list
+python3 -m scripts.kg --repo /path/to/content-repo list --type note
+python3 -m scripts.kg --repo /path/to/content-repo search idea
+python3 -m scripts.kg --repo /path/to/content-repo stats
 ```
 
-`list`, `search`, and `stats` rebuild `indexes/knowledge-galaxy.db` before reading query results.
+`list`, `search`, and `stats` rebuild the SQLite index under the specified `--repo` path.
