@@ -7,7 +7,7 @@ build: build-go
 
 build-go:
 	@mkdir -p bin
-	GO111MODULE=on go build -o $(BIN) ./implementations/go/kg/cmd/kg
+	cd implementations/go/kg && GO111MODULE=on go build -o $(abspath $(BIN)) ./cmd/kg
 	@echo Built $(BIN)
 
 build-rust:
