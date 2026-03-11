@@ -4,6 +4,8 @@ from pathlib import Path
 import sqlite3
 import sys
 from typing import Sequence
+import os
+import subprocess
 
 from .core.frontmatter import generate_document_id, utc_timestamp
 from .core.indexer import rebuild_index
@@ -295,9 +297,33 @@ def normalize_argv(argv: Sequence[str] | None) -> list[str] | None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    # Optional delegation: if KG_USE_GO=1 and bin/kg exists, run Go CLI
+    raw_argv = list(argv) if argv is not None else sys.argv[1:]
+    if os.environ.get("KG_USE_GO") == "1":
+        repo_prefix = []
+        if "--repo" not in raw_argv:
+            # tests always pass --repo; keep behavior simple
+            pass
+        bin_path = Path(__file__).resolve().parents[2] / "bin" / "kg"
+        if bin_path.exists() and os.access(bin_path, os.X_OK):
+            try:
+                result = subprocess.run(
+                    [str(bin_path), *raw_argv],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.stdout:
+                    sys.stdout.write(result.stdout)
+                if result.stderr and result.returncode != 0:
+                    sys.stderr.write(result.stderr)
+                return int(result.returncode)
+            except Exception:
+                # Fallback to Python CLI on any failure
+                pass
+
     parser = build_parser()
     try:
-        raw_argv = list(argv) if argv is not None else sys.argv[1:]
         args = parser.parse_args(normalize_argv(raw_argv))
         return run(args)
     except CommandError as exc:
