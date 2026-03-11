@@ -43,23 +43,23 @@ jobs:
           - goos: darwin
             goarch: amd64
             artifact_name: kg-go-darwin-amd64
-            output_name: kg-darwin-amd64
+            output_name: kg-go-darwin-amd64
           - goos: darwin
             goarch: arm64
             artifact_name: kg-go-darwin-arm64
-            output_name: kg-darwin-arm64
+            output_name: kg-go-darwin-arm64
           - goos: linux
             goarch: amd64
             artifact_name: kg-go-linux-amd64
-            output_name: kg-linux-amd64
+            output_name: kg-go-linux-amd64
           - goos: linux
             goarch: arm64
             artifact_name: kg-go-linux-arm64
-            output_name: kg-linux-arm64
+            output_name: kg-go-linux-arm64
           - goos: windows
             goarch: amd64
             artifact_name: kg-go-windows-amd64
-            output_name: kg-windows-amd64.exe
+            output_name: kg-go-windows-amd64.exe
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -91,27 +91,27 @@ jobs:
           - target: x86_64-apple-darwin
             runner: macos-latest
             artifact_name: kg-rust-darwin-amd64
-            output_name: kg-darwin-amd64
+            output_name: kg-rust-darwin-amd64
             bin_path: implementations/rust/kg/target/x86_64-apple-darwin/release/kg
           - target: aarch64-apple-darwin
             runner: macos-latest
             artifact_name: kg-rust-darwin-arm64
-            output_name: kg-darwin-arm64
+            output_name: kg-rust-darwin-arm64
             bin_path: implementations/rust/kg/target/aarch64-apple-darwin/release/kg
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-latest
             artifact_name: kg-rust-linux-amd64
-            output_name: kg-linux-amd64
+            output_name: kg-rust-linux-amd64
             bin_path: implementations/rust/kg/target/x86_64-unknown-linux-gnu/release/kg
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-latest
             artifact_name: kg-rust-linux-arm64
-            output_name: kg-linux-arm64
+            output_name: kg-rust-linux-arm64
             bin_path: implementations/rust/kg/target/aarch64-unknown-linux-gnu/release/kg
           - target: x86_64-pc-windows-gnu
             runner: ubuntu-latest
             artifact_name: kg-rust-windows-amd64
-            output_name: kg-windows-amd64.exe
+            output_name: kg-rust-windows-amd64.exe
             bin_path: implementations/rust/kg/target/x86_64-pc-windows-gnu/release/kg.exe
     steps:
       - name: Checkout
