@@ -1,6 +1,6 @@
 ---
 name: knowledge-galaxy-cli
-description: Use when managing a Knowledge Galaxy content repository through the kg CLI, especially for creating notes, validating a repo, searching documents, viewing stats, or running project git operations against an external --repo path.
+description: Use when managing a Knowledge Galaxy content repository through the kg CLI, especially for creating notes, capturing content, validating a repo, searching documents, viewing stats, or running project git operations against a target repository path.
 ---
 
 # Knowledge Galaxy CLI
@@ -9,7 +9,7 @@ description: Use when managing a Knowledge Galaxy content repository through the
 
 Use this skill when the user wants to operate a Knowledge Galaxy content repository with `kg`.
 
-`kg` is a CLI for external knowledge repositories. It creates Markdown documents from templates, validates repository structure, lists and searches documents, shows stats, and runs limited git operations for project entries.
+`kg` is a CLI for knowledge repositories. It creates Markdown documents from templates, captures content into notes and dailies, validates repository structure, lists and searches documents, shows stats, and runs limited git operations for project entries.
 
 The safest documented runtime path is the Python entrypoint:
 
@@ -35,7 +35,7 @@ Do not use this skill for:
 
 ## Repository Assumptions
 
-`kg` always targets an external repository passed through `--repo`.
+`kg` targets a content repository. If `--repo` is omitted, it uses `~/.knowledge-galax` and creates the base layout on demand.
 
 The target repository should contain Knowledge Galaxy content directories such as:
 
@@ -55,14 +55,14 @@ Template behavior:
 Preferred:
 
 ```bash
-python3 -m implementations.python.kg --repo /path/to/content-repo <command>
+python3 -m implementations.python.kg [--repo /path/to/content-repo] <command>
 ```
 
 Other implementations exist but are secondary:
 
 ```bash
-./bin/kg --repo /path/to/content-repo <command>
-./bin/kg-rs --repo /path/to/content-repo <command>
+./bin/kg [--repo /path/to/content-repo] <command>
+./bin/kg-rs [--repo /path/to/content-repo] <command>
 ```
 
 When the user asks for the most reliable operational path, prefer Python unless they explicitly want Go or Rust.
@@ -79,6 +79,25 @@ python3 -m implementations.python.kg --repo /path/to/content-repo create note --
 
 ```bash
 python3 -m implementations.python.kg --repo /path/to/content-repo create daily --date 2026-03-12
+```
+
+### Append to a daily note
+
+```bash
+printf 'Captured for today\n' | python3 -m implementations.python.kg append daily
+python3 -m implementations.python.kg --repo /path/to/content-repo append daily --date 2026-03-12 < capture.txt
+```
+
+### Create a note from stdin
+
+```bash
+printf 'Captured from stdin\n' | python3 -m implementations.python.kg create note --title "Streamed Note" --stdin
+```
+
+### Import a note from the clipboard
+
+```bash
+python3 -m implementations.python.kg import clipboard note --title "Clipboard Note"
 ```
 
 ### Create a decision record
@@ -152,8 +171,8 @@ python3 -m implementations.python.kg --repo /path/to/content-repo project sync -
 
 ## Common Mistakes
 
-- Forgetting `--repo`
-  Fix: always pass the target content repository path.
+- Assuming `--repo` is mandatory
+  Fix: omit it to use `~/.knowledge-galax`, or pass it explicitly when targeting another repository.
 
 - Pointing `--repo` at this software repository instead of the content repository
   Fix: use the external knowledge repo, not the tooling repo.

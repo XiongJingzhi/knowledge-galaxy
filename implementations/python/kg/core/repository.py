@@ -9,10 +9,39 @@ from .frontmatter import parse_frontmatter_file
 
 
 SLUG_PARTS_PATTERN = re.compile(r"[^a-z0-9]+")
+DEFAULT_REPO_DIRNAME = ".knowledge-galax"
+REPOSITORY_DIRECTORIES = (
+    "templates",
+    "notes",
+    "dailies",
+    "decisions",
+    "reviews",
+    "references",
+    "themes",
+    "projects",
+    "assets",
+    "inbox",
+    "indexes",
+)
 
 
-def resolve_repo_root(repo: str | None) -> Path:
-    root = Path(repo).expanduser().resolve() if repo else Path.cwd().resolve()
+def default_repo_root() -> Path:
+    return Path.home() / DEFAULT_REPO_DIRNAME
+
+
+def ensure_repository_layout(repo_root: Path) -> Path:
+    repo_root.mkdir(parents=True, exist_ok=True)
+    for directory in REPOSITORY_DIRECTORIES:
+        (repo_root / directory).mkdir(parents=True, exist_ok=True)
+    return repo_root
+
+
+def resolve_repo_root(repo: str | None, *, create_if_missing: bool = False) -> Path:
+    root = Path(repo).expanduser().resolve() if repo else default_repo_root().resolve()
+    if repo is None:
+        return ensure_repository_layout(root)
+    if create_if_missing and not root.exists():
+        return ensure_repository_layout(root)
     if not root.exists() or not root.is_dir():
         raise FileNotFoundError(f"Repository path does not exist: {root}")
     return root

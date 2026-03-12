@@ -1,9 +1,24 @@
 use std::env;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+const DEFAULT_REPO_DIR: &str = ".knowledge-galax";
+const REPOSITORY_DIRECTORIES: &[&str] = &[
+    "templates",
+    "notes",
+    "dailies",
+    "decisions",
+    "reviews",
+    "references",
+    "themes",
+    "projects",
+    "assets",
+    "inbox",
+    "indexes",
+];
 
 fn builtin_template(name: &str) -> Option<&'static str> {
     match name {
@@ -157,7 +172,7 @@ fn main() {
 
 fn run(argv: Vec<String>) -> i32 {
     if argv.is_empty() {
-        eprintln!("usage: kg --repo <path> <command> [args]");
+        eprintln!("usage: kg [--repo <path>] <command> [args]");
         return 1;
     }
 
@@ -177,31 +192,33 @@ fn run(argv: Vec<String>) -> i32 {
         args.splice(0..0, vec!["--repo".into(), r].into_iter());
     }
 
-    // Minimal flag parse: expect --repo first now
-    if args.len() < 3 || args[0] != "--repo" {
-        eprintln!("--repo is required");
+    let (repo_arg, command_index) = if args.len() >= 2 && args[0] == "--repo" {
+        (args[1].clone(), 2usize)
+    } else {
+        (String::new(), 0usize)
+    };
+    if args.len() <= command_index {
+        eprintln!("missing command");
         return 1;
     }
-    let repo_root = match resolve_repo_root(&args[1]) {
+    let cmd = &args[command_index];
+    let create_if_missing = matches!(cmd.as_str(), "create" | "append" | "import" | "project");
+    let repo_root = match resolve_repo_root(&repo_arg, create_if_missing) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("{}", e);
             return 1;
         }
     };
-
-    if args.len() < 3 {
-        eprintln!("missing command");
-        return 1;
-    }
-    let cmd = &args[2];
     match cmd.as_str() {
-        "create" => cmd_create(&repo_root, &args[3..]),
+        "create" => cmd_create(&repo_root, &args[command_index + 1..]),
+        "append" => cmd_append(&repo_root, &args[command_index + 1..]),
+        "import" => cmd_import(&repo_root, &args[command_index + 1..]),
         "validate" => cmd_validate(&repo_root),
-        "list" => cmd_list(&repo_root, &args[3..]),
-        "search" => cmd_search(&repo_root, &args[3..]),
+        "list" => cmd_list(&repo_root, &args[command_index + 1..]),
+        "search" => cmd_search(&repo_root, &args[command_index + 1..]),
         "stats" => cmd_stats(&repo_root),
-        "project" => cmd_project(&repo_root, &args[3..]),
+        "project" => cmd_project(&repo_root, &args[command_index + 1..]),
         "--help" | "-h" => {
             println!("usage:");
             0
@@ -215,9 +232,23 @@ fn run(argv: Vec<String>) -> i32 {
 
 // ---- repository helpers ----
 
-fn resolve_repo_root(p: &str) -> Result<PathBuf, String> {
-    let expanded = expand_user(p);
+fn resolve_repo_root(p: &str, create_if_missing: bool) -> Result<PathBuf, String> {
+    let mut create_if_missing = create_if_missing;
+    let p = if p.trim().is_empty() {
+        create_if_missing = true;
+        let home = dirs_home().ok_or_else(|| "HOME is not set".to_string())?;
+        Path::new(&home)
+            .join(DEFAULT_REPO_DIR)
+            .display()
+            .to_string()
+    } else {
+        p.to_string()
+    };
+    let expanded = expand_user(&p);
     let abs = std::fs::canonicalize(&expanded).unwrap_or_else(|_| PathBuf::from(&expanded));
+    if !abs.exists() && create_if_missing {
+        ensure_repo_layout(&abs)?;
+    }
     if abs.is_dir() {
         Ok(abs)
     } else {
@@ -225,19 +256,38 @@ fn resolve_repo_root(p: &str) -> Result<PathBuf, String> {
     }
 }
 
+fn ensure_repo_layout(root: &Path) -> Result<(), String> {
+    fs::create_dir_all(root).map_err(|e| e.to_string())?;
+    for dir in REPOSITORY_DIRECTORIES {
+        fs::create_dir_all(root.join(dir)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 fn expand_user(s: &str) -> String {
     if let Some(rest) = s.strip_prefix('~') {
         if let Some(home) = dirs_home() {
-            return Path::new(&home).join(rest.trim_start_matches('/')).display().to_string();
+            return Path::new(&home)
+                .join(rest.trim_start_matches('/'))
+                .display()
+                .to_string();
         }
     }
     shellexpand_env(s)
 }
 
 fn dirs_home() -> Option<String> {
-    if let Ok(h) = env::var("HOME") { if !h.is_empty() { return Some(h); } }
+    if let Ok(h) = env::var("HOME") {
+        if !h.is_empty() {
+            return Some(h);
+        }
+    }
     if cfg!(windows) {
-        if let Ok(h) = env::var("USERPROFILE") { if !h.is_empty() { return Some(h); } }
+        if let Ok(h) = env::var("USERPROFILE") {
+            if !h.is_empty() {
+                return Some(h);
+            }
+        }
     }
     None
 }
@@ -270,9 +320,7 @@ fn format_utc_timestamp(unix_seconds: i64) -> String {
     let hour = seconds_of_day / 3_600;
     let minute = (seconds_of_day % 3_600) / 60;
     let second = seconds_of_day % 60;
-    format!(
-        "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z"
-    )
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
 }
 
 fn format_utc_date(unix_seconds: i64) -> String {
@@ -287,12 +335,21 @@ fn shellexpand_env(s: &str) -> String {
     let mut chars = s.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '$' {
-            if let Some(&'{') = chars.peek() { chars.next(); /* consume '{' */ }
+            if let Some(&'{') = chars.peek() {
+                chars.next(); /* consume '{' */
+            }
             let mut name = String::new();
             while let Some(&ch) = chars.peek() {
-                if ch.is_alphanumeric() || ch == '_' { name.push(ch); chars.next(); } else { break; }
+                if ch.is_alphanumeric() || ch == '_' {
+                    name.push(ch);
+                    chars.next();
+                } else {
+                    break;
+                }
             }
-            if let Some(&'}') = chars.peek() { chars.next(); }
+            if let Some(&'}') = chars.peek() {
+                chars.next();
+            }
             out.push_str(&env::var(&name).unwrap_or_default());
         } else {
             out.push(c);
@@ -306,11 +363,20 @@ fn slugify(s: &str) -> Result<String, String> {
     let mut last_dash = false;
     for ch in s.trim().to_lowercase().chars() {
         let is_alnum = ch.is_ascii_alphanumeric();
-        if is_alnum { slug.push(ch); last_dash = false; }
-        else { if !last_dash { slug.push('-'); last_dash = true; } }
+        if is_alnum {
+            slug.push(ch);
+            last_dash = false;
+        } else {
+            if !last_dash {
+                slug.push('-');
+                last_dash = true;
+            }
+        }
     }
     let slug = slug.trim_matches('-').to_string();
-    if slug.is_empty() { return Err("Title must contain at least one alphanumeric character".into()); }
+    if slug.is_empty() {
+        return Err("Title must contain at least one alphanumeric character".into());
+    }
     Ok(slug)
 }
 
@@ -322,63 +388,150 @@ fn today_yyyy_mm_dd() -> String {
     format_utc_date(now_unix_seconds())
 }
 
+fn is_valid_iso_date(value: &str) -> bool {
+    if value.len() != 10 {
+        return false;
+    }
+    let bytes = value.as_bytes();
+    bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| matches!(index, 4 | 7) || byte.is_ascii_digit())
+}
+
 fn rel_path(root: &Path, p: &Path) -> String {
-    let rel = match p.strip_prefix(root) { Ok(r) => r.to_path_buf(), Err(_) => p.to_path_buf() };
+    let rel = match p.strip_prefix(root) {
+        Ok(r) => r.to_path_buf(),
+        Err(_) => p.to_path_buf(),
+    };
     let mut s = String::new();
     for (i, comp) in rel.components().enumerate() {
-        if i > 0 { s.push('/'); }
+        if i > 0 {
+            s.push('/');
+        }
         s.push_str(&comp.as_os_str().to_string_lossy());
     }
-    if s.is_empty() { p.to_string_lossy().replace('\\', "/") } else { s }
+    if s.is_empty() {
+        p.to_string_lossy().replace('\\', "/")
+    } else {
+        s
+    }
 }
 
 // ---- create ----
 
 fn cmd_create(repo_root: &Path, args: &[String]) -> i32 {
-    if args.is_empty() { eprintln!("missing create type"); return 1; }
+    if args.is_empty() {
+        eprintln!("missing create type");
+        return 1;
+    }
     let create_type = args[0].as_str();
     let mut title: Option<String> = None;
     let mut date_text: Option<String> = None;
     let mut git_worktree: Option<String> = None;
+    let mut read_body_from_stdin = false;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--title" if i + 1 < args.len() => { title = Some(args[i+1].clone()); i += 2; }
-            "--date" if i + 1 < args.len() => { date_text = Some(args[i+1].clone()); i += 2; }
-            "--git-worktree" if i + 1 < args.len() => { git_worktree = Some(args[i+1].clone()); i += 2; }
-            _ => { i += 1; }
+            "--title" if i + 1 < args.len() => {
+                title = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--date" if i + 1 < args.len() => {
+                date_text = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--git-worktree" if i + 1 < args.len() => {
+                git_worktree = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--stdin" => {
+                read_body_from_stdin = true;
+                i += 1;
+            }
+            _ => {
+                i += 1;
+            }
         }
     }
     let now = timestamp_utc_rfc3339();
+    let body = if read_body_from_stdin {
+        match read_stdin_text() {
+            Ok(text) => Some(text),
+            Err(e) => {
+                eprintln!("{}", e);
+                return 1;
+            }
+        }
+    } else {
+        None
+    };
     let mut derived_date: Option<String> = None;
     let mut derived_git_worktree: Option<String> = None;
     let mut derived_slug: Option<String> = None;
     let (target, template) = match create_type {
         "note" => {
             let t = title.clone().unwrap_or_default();
-            if t.is_empty() { eprintln!("--title is required"); return 1; }
-            let slug = match slugify(&t) { Ok(s) => s, Err(e) => { eprintln!("{}", e); return 1;} };
+            if t.is_empty() {
+                eprintln!("--title is required");
+                return 1;
+            }
+            let slug = match slugify(&t) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return 1;
+                }
+            };
             derived_slug = Some(slug.clone());
             (note_path(repo_root, &slug), "note")
         }
         "daily" => {
             let dt = date_text.clone().unwrap_or_else(|| today_yyyy_mm_dd());
+            if !is_valid_iso_date(&dt) {
+                eprintln!("Invalid date: {}", dt);
+                return 1;
+            }
             derived_date = Some(dt.clone());
             derived_slug = Some(dt.clone());
             (daily_path(repo_root, &dt), "daily")
         }
         "decision" => {
             let t = title.clone().unwrap_or_default();
-            if t.is_empty() { eprintln!("--title is required"); return 1; }
-            let slug = match slugify(&t) { Ok(s) => s, Err(e) => { eprintln!("{}", e); return 1;} };
+            if t.is_empty() {
+                eprintln!("--title is required");
+                return 1;
+            }
+            let slug = match slugify(&t) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return 1;
+                }
+            };
             derived_slug = Some(slug.clone());
             (decision_path(repo_root, &slug), "decision")
         }
         "review" => {
             let t = title.clone().unwrap_or_default();
-            if t.is_empty() { eprintln!("--title is required"); return 1; }
-            let slug = match slugify(&t) { Ok(s) => s, Err(e) => { eprintln!("{}", e); return 1;} };
+            if t.is_empty() {
+                eprintln!("--title is required");
+                return 1;
+            }
+            let slug = match slugify(&t) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return 1;
+                }
+            };
             let dt = date_text.clone().unwrap_or_else(|| today_yyyy_mm_dd());
+            if !is_valid_iso_date(&dt) {
+                eprintln!("Invalid date: {}", dt);
+                return 1;
+            }
             derived_date = Some(dt);
             derived_slug = Some(slug.clone());
             let path = review_path(repo_root, &slug);
@@ -386,18 +539,33 @@ fn cmd_create(repo_root: &Path, args: &[String]) -> i32 {
         }
         "project" => {
             let t = title.clone().unwrap_or_default();
-            if t.is_empty() || git_worktree.is_none() { eprintln!("--title and --git-worktree are required"); return 1; }
+            if t.is_empty() || git_worktree.is_none() {
+                eprintln!("--title and --git-worktree are required");
+                return 1;
+            }
             let gw = match resolve_git_worktree(&git_worktree.clone().unwrap()) {
                 Ok(p) => p,
-                Err(e) => { eprintln!("{}", e); return 1; }
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return 1;
+                }
             };
-            let slug = match slugify(&t) { Ok(s) => s, Err(e) => { eprintln!("{}", e); return 1;} };
+            let slug = match slugify(&t) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return 1;
+                }
+            };
             let path = project_path(repo_root, &slug);
             derived_git_worktree = Some(gw);
             derived_slug = Some(slug);
             (path, "project")
         }
-        _ => { eprintln!("Unsupported create type"); return 1; }
+        _ => {
+            eprintln!("Unsupported create type");
+            return 1;
+        }
     };
 
     // Build replacement map
@@ -405,65 +573,363 @@ fn cmd_create(repo_root: &Path, args: &[String]) -> i32 {
     map.insert("id".to_string(), new_uuid());
     map.insert("created_at".to_string(), now.clone());
     map.insert("updated_at".to_string(), now);
-    if let Some(t) = title { map.insert("title".into(), t); }
-    if let Some(d) = derived_date { map.insert("date".into(), d.clone()); if !map.contains_key("title") { map.insert("title".into(), d.clone()); } if create_type == "daily" { map.insert("slug".into(), d); } }
-    if let Some(gw) = derived_git_worktree { map.insert("git_worktree".into(), must_abs(&gw)); }
-    if let Some(s) = derived_slug { map.insert("slug".into(), s); }
+    if let Some(t) = title {
+        map.insert("title".into(), t);
+    }
+    if let Some(d) = derived_date {
+        map.insert("date".into(), d.clone());
+        if !map.contains_key("title") {
+            map.insert("title".into(), d.clone());
+        }
+        if create_type == "daily" {
+            map.insert("slug".into(), d);
+        }
+    }
+    if let Some(gw) = derived_git_worktree {
+        map.insert("git_worktree".into(), must_abs(&gw));
+    }
+    if let Some(s) = derived_slug {
+        map.insert("slug".into(), s);
+    }
 
-    let code = create_from_template(repo_root, template, &map, &target);
-    if code != 0 { return code; }
+    let code = create_from_template(repo_root, template, &map, body.as_deref(), &target);
+    if code != 0 {
+        return code;
+    }
     println!("{}", rel_path(repo_root, &target));
     0
 }
 
-fn create_from_template(repo_root: &Path, name: &str, repl: &std::collections::BTreeMap<String,String>, target: &Path) -> i32 {
-    if target.exists() { eprintln!("Target file already exists: {}", target.display()); return 1; }
+fn create_from_template(
+    repo_root: &Path,
+    name: &str,
+    repl: &std::collections::BTreeMap<String, String>,
+    body: Option<&str>,
+    target: &Path,
+) -> i32 {
+    if let Err(e) = write_from_template(repo_root, name, repl, body, target, false) {
+        eprintln!("{}", e);
+        return 1;
+    }
+    0
+}
+
+fn write_from_template(
+    repo_root: &Path,
+    name: &str,
+    repl: &std::collections::BTreeMap<String, String>,
+    body: Option<&str>,
+    target: &Path,
+    overwrite: bool,
+) -> Result<(), String> {
+    if target.exists() && !overwrite {
+        return Err(format!("Target file already exists: {}", target.display()));
+    }
     let tpl = repo_root.join("templates").join(format!("{}.md", name));
     let mut text = match fs::read_to_string(&tpl) {
         Ok(text) => text,
         Err(_) => match builtin_template(name) {
             Some(template) => template.to_string(),
-            None => { eprintln!("{}", io_err(&tpl)); return 1; }
+            None => return Err(io_err(&tpl)),
         },
     };
-    for (k, v) in repl.iter() { text = text.replace(&format!("<{}>", k), v); }
-    if let Some(dir) = target.parent() { if let Err(e) = fs::create_dir_all(dir) { eprintln!("{}", e); return 1; } }
-    if let Err(e) = fs::write(target, text.as_bytes()) { eprintln!("{}", e); return 1; }
+    for (k, v) in repl.iter() {
+        text = text.replace(&format!("<{}>", k), v);
+    }
+    if let Some(extra) = body {
+        let trimmed = extra.trim();
+        if !trimmed.is_empty() {
+            text = format!("{}\n\n{}\n", text.trim_end(), trimmed);
+        }
+    }
+    if let Some(dir) = target.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    if target.exists() && !overwrite {
+        return Err(format!("Target file already exists: {}", target.display()));
+    }
+    fs::write(target, text.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn cmd_append(repo_root: &Path, args: &[String]) -> i32 {
+    if args.is_empty() {
+        eprintln!("missing append type");
+        return 1;
+    }
+    if args[0] != "daily" {
+        eprintln!("Unsupported append type");
+        return 1;
+    }
+    let mut date_text: Option<String> = None;
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--date" if i + 1 < args.len() => {
+                date_text = Some(args[i + 1].clone());
+                i += 2;
+            }
+            _ => i += 1,
+        }
+    }
+    let body = match read_stdin_text() {
+        Ok(text) => text,
+        Err(e) => {
+            eprintln!("{}", e);
+            return 1;
+        }
+    };
+    let date_value = date_text.unwrap_or_else(today_yyyy_mm_dd);
+    if !is_valid_iso_date(&date_value) {
+        eprintln!("Invalid date: {}", date_value);
+        return 1;
+    }
+    let target = daily_path(repo_root, &date_value);
+    if !target.exists() {
+        let mut map = std::collections::BTreeMap::new();
+        let now = timestamp_utc_rfc3339();
+        map.insert("id".to_string(), new_uuid());
+        map.insert("title".to_string(), date_value.clone());
+        map.insert("slug".to_string(), date_value.clone());
+        map.insert("date".to_string(), date_value.clone());
+        map.insert("created_at".to_string(), now.clone());
+        map.insert("updated_at".to_string(), now);
+        if let Err(e) = write_from_template(repo_root, "daily", &map, None, &target, false) {
+            eprintln!("{}", e);
+            return 1;
+        }
+    }
+    let current = match fs::read_to_string(&target) {
+        Ok(text) => text,
+        Err(e) => {
+            eprintln!("{}", e);
+            return 1;
+        }
+    };
+    let updated = format!(
+        "{}\n\n## Capture {}\n\n{}\n",
+        current.trim_end(),
+        timestamp_utc_rfc3339(),
+        body.trim()
+    );
+    if let Err(e) = fs::write(&target, updated.as_bytes()) {
+        eprintln!("{}", e);
+        return 1;
+    }
+    println!("{}", rel_path(repo_root, &target));
     0
 }
 
-fn io_err(p: &Path) -> String { format!("{}", io::Error::new(io::ErrorKind::Other, format!("failed to read {}", p.display()))) }
-
-fn note_path(root: &Path, slug: &str) -> PathBuf { root.join("notes").join(format!("{}.md", slug)) }
-fn daily_path(root: &Path, date: &str) -> PathBuf {
-    let y = &date[0..4]; let m = &date[5..7]; let d = &date[8..10];
-    root.join("dailies").join(y).join(m).join(format!("{}.md", d))
+fn cmd_import(repo_root: &Path, args: &[String]) -> i32 {
+    if args.len() < 2 || args[0] != "clipboard" || args[1] != "note" {
+        eprintln!("Unsupported import type");
+        return 1;
+    }
+    let mut title: Option<String> = None;
+    let mut i = 2;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--title" if i + 1 < args.len() => {
+                title = Some(args[i + 1].clone());
+                i += 2;
+            }
+            _ => i += 1,
+        }
+    }
+    let title = match title {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            eprintln!("--title is required");
+            return 1;
+        }
+    };
+    let body = match read_clipboard_text() {
+        Ok(text) => text,
+        Err(e) => {
+            eprintln!("{}", e);
+            return 1;
+        }
+    };
+    let slug = match slugify(&title) {
+        Ok(value) => value,
+        Err(e) => {
+            eprintln!("{}", e);
+            return 1;
+        }
+    };
+    let mut map = std::collections::BTreeMap::new();
+    let now = timestamp_utc_rfc3339();
+    map.insert("id".to_string(), new_uuid());
+    map.insert("title".to_string(), title);
+    map.insert("slug".to_string(), slug.clone());
+    map.insert("created_at".to_string(), now.clone());
+    map.insert("updated_at".to_string(), now);
+    let target = note_path(repo_root, &slug);
+    let code = create_from_template(repo_root, "note", &map, Some(body.as_str()), &target);
+    if code != 0 {
+        return code;
+    }
+    println!("{}", rel_path(repo_root, &target));
+    0
 }
-fn decision_path(root: &Path, slug: &str) -> PathBuf { root.join("decisions").join(format!("{}.md", slug)) }
-fn review_path(root: &Path, slug: &str) -> PathBuf { root.join("reviews").join(format!("{}.md", slug)) }
-fn project_path(root: &Path, slug: &str) -> PathBuf { root.join("projects").join(slug).join("README.md") }
+
+fn read_stdin_text() -> Result<String, String> {
+    let mut input = String::new();
+    io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|e| e.to_string())?;
+    let trimmed = input.trim().to_string();
+    if trimmed.is_empty() {
+        return Err("stdin is empty".to_string());
+    }
+    Ok(trimmed)
+}
+
+fn read_clipboard_text() -> Result<String, String> {
+    let commands: Vec<Vec<&str>> = match env::consts::OS {
+        "macos" => vec![vec!["pbpaste"]],
+        "windows" => vec![vec![
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-Clipboard",
+        ]],
+        _ => vec![
+            vec!["wl-paste", "-n"],
+            vec!["xclip", "-selection", "clipboard", "-o"],
+        ],
+    };
+    let mut last_error = "clipboard command is unavailable".to_string();
+    for command in commands {
+        let output = Command::new(command[0]).args(&command[1..]).output();
+        match output {
+            Ok(result) if result.status.success() => {
+                let text = String::from_utf8_lossy(&result.stdout).trim().to_string();
+                if text.is_empty() {
+                    return Err("clipboard is empty".to_string());
+                }
+                return Ok(text);
+            }
+            Ok(result) => {
+                let stderr = String::from_utf8_lossy(&result.stderr).trim().to_string();
+                let stdout = String::from_utf8_lossy(&result.stdout).trim().to_string();
+                if !stderr.is_empty() {
+                    last_error = stderr;
+                } else if !stdout.is_empty() {
+                    last_error = stdout;
+                }
+            }
+            Err(e) => {
+                last_error = e.to_string();
+            }
+        }
+    }
+    Err(last_error)
+}
+
+fn io_err(p: &Path) -> String {
+    format!(
+        "{}",
+        io::Error::new(
+            io::ErrorKind::Other,
+            format!("failed to read {}", p.display())
+        )
+    )
+}
+
+fn note_path(root: &Path, slug: &str) -> PathBuf {
+    root.join("notes").join(format!("{}.md", slug))
+}
+fn daily_path(root: &Path, date: &str) -> PathBuf {
+    let y = &date[0..4];
+    let m = &date[5..7];
+    let d = &date[8..10];
+    root.join("dailies")
+        .join(y)
+        .join(m)
+        .join(format!("{}.md", d))
+}
+fn decision_path(root: &Path, slug: &str) -> PathBuf {
+    root.join("decisions").join(format!("{}.md", slug))
+}
+fn review_path(root: &Path, slug: &str) -> PathBuf {
+    root.join("reviews").join(format!("{}.md", slug))
+}
+fn project_path(root: &Path, slug: &str) -> PathBuf {
+    root.join("projects").join(slug).join("README.md")
+}
 
 // ---- validate/list/search/stats ----
 
 #[derive(Clone, Debug, Default)]
-struct Document { path: String, id: String, type_: String, title: String, slug: String, status: String, date: String, theme: Vec<String>, project: Vec<String>, tags: Vec<String>, source: Vec<String>, summary: String, body: String, created: String, updated: String }
+struct Document {
+    path: String,
+    id: String,
+    type_: String,
+    title: String,
+    slug: String,
+    status: String,
+    date: String,
+    theme: Vec<String>,
+    project: Vec<String>,
+    tags: Vec<String>,
+    source: Vec<String>,
+    summary: String,
+    body: String,
+    created: String,
+    updated: String,
+}
 
-fn cmd_validate(repo_root: &Path) -> i32 { let files = collect_documents(repo_root); let errs = validate_all(repo_root, &files); if !errs.is_empty() { for e in errs { println!("{}", e); } return 1; } println!("OK"); 0 }
+fn cmd_validate(repo_root: &Path) -> i32 {
+    let files = collect_documents(repo_root);
+    let errs = validate_all(repo_root, &files);
+    if !errs.is_empty() {
+        for e in errs {
+            println!("{}", e);
+        }
+        return 1;
+    }
+    println!("OK");
+    0
+}
 
 fn cmd_list(repo_root: &Path, args: &[String]) -> i32 {
-    let mut typ: Option<String> = None; let mut i = 0; while i < args.len() { if args[i] == "--type" && i+1 < args.len() { typ = Some(args[i+1].clone()); i+=2; } else { i+=1; } }
+    let mut typ: Option<String> = None;
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "--type" && i + 1 < args.len() {
+            typ = Some(args[i + 1].clone());
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
     let mut idx = build_index(repo_root);
-    idx.sort_by(|a,b| a.path.cmp(&b.path));
-    for d in idx { if typ.as_ref().map_or(true, |t| &d.type_ == t) { println!("{}\t{}\t{}", d.type_, d.title, d.path); } }
+    idx.sort_by(|a, b| a.path.cmp(&b.path));
+    for d in idx {
+        if typ.as_ref().map_or(true, |t| &d.type_ == t) {
+            println!("{}\t{}\t{}", d.type_, d.title, d.path);
+        }
+    }
     0
 }
 
 fn cmd_search(repo_root: &Path, args: &[String]) -> i32 {
-    if args.is_empty() { eprintln!("missing query"); return 1; }
+    if args.is_empty() {
+        eprintln!("missing query");
+        return 1;
+    }
     let q = args[0].to_lowercase();
     let mut idx = build_index(repo_root);
-    idx.sort_by(|a,b| a.path.cmp(&b.path));
-    for d in idx { let t = d.title.to_lowercase(); let s = d.summary.to_lowercase(); let b = d.body.to_lowercase(); if t.contains(&q) || s.contains(&q) || b.contains(&q) { println!("{}\t{}\t{}", d.type_, d.title, d.path); } }
+    idx.sort_by(|a, b| a.path.cmp(&b.path));
+    for d in idx {
+        let t = d.title.to_lowercase();
+        let s = d.summary.to_lowercase();
+        let b = d.body.to_lowercase();
+        if t.contains(&q) || s.contains(&q) || b.contains(&q) {
+            println!("{}\t{}\t{}", d.type_, d.title, d.path);
+        }
+    }
     0
 }
 
@@ -472,21 +938,41 @@ fn cmd_stats(repo_root: &Path) -> i32 {
     println!("total\t{}", idx.len());
     let mut by_type: std::collections::BTreeMap<String, usize> = Default::default();
     let mut by_status: std::collections::BTreeMap<String, usize> = Default::default();
-    for d in idx { *by_type.entry(d.type_).or_default() += 1; *by_status.entry(d.status).or_default() += 1; }
-    for (k,v) in by_type { println!("type:{}\t{}", k, v); }
-    for (k,v) in by_status { println!("status:{}\t{}", k, v); }
+    for d in idx {
+        *by_type.entry(d.type_).or_default() += 1;
+        *by_status.entry(d.status).or_default() += 1;
+    }
+    for (k, v) in by_type {
+        println!("type:{}\t{}", k, v);
+    }
+    for (k, v) in by_status {
+        println!("status:{}\t{}", k, v);
+    }
     0
 }
 
 fn collect_documents(repo_root: &Path) -> Vec<PathBuf> {
     let mut files = vec![];
-    for r in ["notes","dailies","decisions","reviews","projects"] { let root = repo_root.join(r); let _ = visit(&root, &mut files); }
+    for r in ["notes", "dailies", "decisions", "reviews", "projects"] {
+        let root = repo_root.join(r);
+        let _ = visit(&root, &mut files);
+    }
     files
 }
 
 fn visit(root: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
-    if !root.exists() { return Ok(()); }
-    for e in fs::read_dir(root)? { let e = e?; let p = e.path(); if p.is_dir() { let _ = visit(&p, out); } else if p.extension().map(|s| s == "md").unwrap_or(false) { out.push(p); } }
+    if !root.exists() {
+        return Ok(());
+    }
+    for e in fs::read_dir(root)? {
+        let e = e?;
+        let p = e.path();
+        if p.is_dir() {
+            let _ = visit(&p, out);
+        } else if p.extension().map(|s| s == "md").unwrap_or(false) {
+            out.push(p);
+        }
+    }
     Ok(())
 }
 
@@ -512,29 +998,46 @@ fn build_index(repo_root: &Path) -> Vec<Document> {
     out
 }
 
-fn parse_frontmatter_file(p: &Path) -> Result<(std::collections::BTreeMap<String,String>, String), String> {
+fn parse_frontmatter_file(
+    p: &Path,
+) -> Result<(std::collections::BTreeMap<String, String>, String), String> {
     let text = fs::read_to_string(p).map_err(|e| e.to_string())?;
     parse_frontmatter(&text)
 }
 
-fn parse_frontmatter(text: &str) -> Result<(std::collections::BTreeMap<String,String>, String), String> {
-    if !text.starts_with("---\n") { return Err("missing frontmatter".into()); }
+fn parse_frontmatter(
+    text: &str,
+) -> Result<(std::collections::BTreeMap<String, String>, String), String> {
+    if !text.starts_with("---\n") {
+        return Err("missing frontmatter".into());
+    }
     let rest = &text[4..];
-    let Some(end) = rest.find("\n---\n") else { return Err("unterminated frontmatter".into()); };
+    let Some(end) = rest.find("\n---\n") else {
+        return Err("unterminated frontmatter".into());
+    };
     let block = &rest[..end];
     let body = &rest[end + 5..];
-    let mut data: std::collections::BTreeMap<String,String> = Default::default();
+    let mut data: std::collections::BTreeMap<String, String> = Default::default();
     for line in block.lines() {
-        if line.trim().is_empty() { continue; }
-        if let Some((k,v)) = line.split_once(':') { data.insert(k.trim().to_string(), parse_front_value(v.trim())); }
-        else { return Err(format!("invalid frontmatter line: {}", line)); }
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Some((k, v)) = line.split_once(':') {
+            data.insert(k.trim().to_string(), parse_front_value(v.trim()));
+        } else {
+            return Err(format!("invalid frontmatter line: {}", line));
+        }
     }
     Ok((data, body.to_string()))
 }
 
 fn parse_front_value(v: &str) -> String {
-    if v.starts_with('[') && v.ends_with(']') { return v.to_string(); }
-    if v == "\"\"" { return String::new(); }
+    if v.starts_with('[') && v.ends_with(']') {
+        return v.to_string();
+    }
+    if v == "\"\"" {
+        return String::new();
+    }
     v.to_string()
 }
 
@@ -545,50 +1048,126 @@ fn validate_all(repo_root: &Path, files: &[PathBuf]) -> Vec<String> {
         let rel = rel_path(repo_root, f);
         match parse_frontmatter_file(f) {
             Ok((meta, _body)) => {
-                for k in ["id","type","title","slug","created_at","updated_at","status"] { if meta.get(k).map(String::is_empty).unwrap_or(true) { errs.push(format!("{}: missing required field: {}", rel, k)); } }
+                for k in [
+                    "id",
+                    "type",
+                    "title",
+                    "slug",
+                    "created_at",
+                    "updated_at",
+                    "status",
+                ] {
+                    if meta.get(k).map(String::is_empty).unwrap_or(true) {
+                        errs.push(format!("{}: missing required field: {}", rel, k));
+                    }
+                }
                 let dt = meta.get("type").cloned().unwrap_or_default();
-                if !matches!(dt.as_str(), "daily"|"note"|"decision"|"review"|"project") { errs.push(format!("{}: unsupported type: {}", rel, dt)); continue; }
+                if !matches!(
+                    dt.as_str(),
+                    "daily" | "note" | "decision" | "review" | "project"
+                ) {
+                    errs.push(format!("{}: unsupported type: {}", rel, dt));
+                    continue;
+                }
                 let st = meta.get("status").cloned().unwrap_or_default();
-                if !st.is_empty() && !matches!(st.as_str(), "inbox"|"active"|"evergreen"|"archived") { errs.push(format!("{}: unsupported status: {}", rel, st)); }
+                if !st.is_empty()
+                    && !matches!(st.as_str(), "inbox" | "active" | "evergreen" | "archived")
+                {
+                    errs.push(format!("{}: unsupported status: {}", rel, st));
+                }
                 let slug = meta.get("slug").cloned().unwrap_or_default();
-                if !slug.is_empty() && !valid_slug(&slug) { errs.push(format!("{}: invalid slug: {}", rel, slug)); }
+                if !slug.is_empty() && !valid_slug(&slug) {
+                    errs.push(format!("{}: invalid slug: {}", rel, slug));
+                }
                 if dt == "daily" {
                     let date_val = meta.get("date").cloned().unwrap_or_default();
-                    if date_val.is_empty() { errs.push(format!("{}: missing required field: date", rel)); }
-                    else {
-                        let exp = format!("dailies/{}/{}/{}.md", &date_val[0..4], &date_val[5..7], &date_val[8..10]);
-                        if rel != exp { errs.push(format!("{}: invalid daily path", rel)); }
-                        if slug != date_val { errs.push(format!("{}: daily slug must match date", rel)); }
+                    if date_val.is_empty() {
+                        errs.push(format!("{}: missing required field: date", rel));
+                    } else {
+                        let exp = format!(
+                            "dailies/{}/{}/{}.md",
+                            &date_val[0..4],
+                            &date_val[5..7],
+                            &date_val[8..10]
+                        );
+                        if rel != exp {
+                            errs.push(format!("{}: invalid daily path", rel));
+                        }
+                        if slug != date_val {
+                            errs.push(format!("{}: daily slug must match date", rel));
+                        }
                     }
                 } else if dt == "project" {
                     let exp = format!("projects/{}/README.md", slug);
-                    if rel != exp { errs.push(format!("{}: invalid path for type: {}", rel, dt)); }
-                    if let Some(gw) = meta.get("git_worktree").cloned() { if !gw.trim().is_empty() { let abs = must_abs(&gw); if !Path::new(&abs).is_dir() { errs.push(format!("{}: git_worktree path does not exist", rel)); } else if !is_git_worktree(&abs) { errs.push(format!("{}: git_worktree is not a git working tree", rel)); } } }
+                    if rel != exp {
+                        errs.push(format!("{}: invalid path for type: {}", rel, dt));
+                    }
+                    if let Some(gw) = meta.get("git_worktree").cloned() {
+                        if !gw.trim().is_empty() {
+                            let abs = must_abs(&gw);
+                            if !Path::new(&abs).is_dir() {
+                                errs.push(format!("{}: git_worktree path does not exist", rel));
+                            } else if !is_git_worktree(&abs) {
+                                errs.push(format!(
+                                    "{}: git_worktree is not a git working tree",
+                                    rel
+                                ));
+                            }
+                        }
+                    }
                 } else {
-                    let prefix = match dt.as_str() { "note" => "notes/", "decision" => "decisions/", "review" => "reviews/", _ => "" };
+                    let prefix = match dt.as_str() {
+                        "note" => "notes/",
+                        "decision" => "decisions/",
+                        "review" => "reviews/",
+                        _ => "",
+                    };
                     if !prefix.is_empty() {
-                        if !rel.starts_with(prefix) { errs.push(format!("{}: invalid path for type: {}", rel, dt)); }
-                        if Path::new(&rel).file_name().map(|n| n.to_string_lossy() != format!("{}.md", slug)).unwrap_or(true) { errs.push(format!("{}: slug does not match file name", rel)); }
+                        if !rel.starts_with(prefix) {
+                            errs.push(format!("{}: invalid path for type: {}", rel, dt));
+                        }
+                        if Path::new(&rel)
+                            .file_name()
+                            .map(|n| n.to_string_lossy() != format!("{}.md", slug))
+                            .unwrap_or(true)
+                        {
+                            errs.push(format!("{}: slug does not match file name", rel));
+                        }
                     }
                 }
-                if let Some(id) = meta.get("id").cloned() { ids.entry(id).or_default().push(rel); }
+                if let Some(id) = meta.get("id").cloned() {
+                    ids.entry(id).or_default().push(rel);
+                }
             }
             Err(e) => errs.push(format!("{}: {}", rel, e)),
         }
     }
-    for (id, paths) in ids { if paths.len() > 1 { errs.push(format!("duplicate id: {} -> {}", id, paths.join(", "))); } }
+    for (id, paths) in ids {
+        if paths.len() > 1 {
+            errs.push(format!("duplicate id: {} -> {}", id, paths.join(", ")));
+        }
+    }
     errs
 }
 
 fn valid_slug(s: &str) -> bool {
     let b = s.as_bytes();
-    if b.is_empty() { return false; }
-    if b[0] == b'-' || *b.last().unwrap() == b'-' { return false; }
+    if b.is_empty() {
+        return false;
+    }
+    if b[0] == b'-' || *b.last().unwrap() == b'-' {
+        return false;
+    }
     let mut prev_dash = false;
     for &ch in b {
         match ch {
             b'0'..=b'9' | b'a'..=b'z' => prev_dash = false,
-            b'-' => { if prev_dash { return false; } prev_dash = true; }
+            b'-' => {
+                if prev_dash {
+                    return false;
+                }
+                prev_dash = true;
+            }
             _ => return false,
         }
     }
@@ -598,7 +1177,10 @@ fn valid_slug(s: &str) -> bool {
 // ---- project (git) ----
 
 fn cmd_project(repo_root: &Path, args: &[String]) -> i32 {
-    if args.is_empty() { eprintln!("missing project subcommand"); return 1; }
+    if args.is_empty() {
+        eprintln!("missing project subcommand");
+        return 1;
+    }
     let sub = &args[0];
     let mut project = String::new();
     let mut name = String::new();
@@ -608,99 +1190,221 @@ fn cmd_project(repo_root: &Path, args: &[String]) -> i32 {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--project" if i+1 < args.len() => { project = args[i+1].clone(); i+=2; }
-            "--name" if i+1 < args.len() => { name = args[i+1].clone(); i+=2; }
-            "--url" if i+1 < args.len() => { url = args[i+1].clone(); i+=2; }
-            "--remote" if i+1 < args.len() => { remote = args[i+1].clone(); i+=2; }
-            "--branch" if i+1 < args.len() => { branch = args[i+1].clone(); i+=2; }
-            _ => { i+=1; }
+            "--project" if i + 1 < args.len() => {
+                project = args[i + 1].clone();
+                i += 2;
+            }
+            "--name" if i + 1 < args.len() => {
+                name = args[i + 1].clone();
+                i += 2;
+            }
+            "--url" if i + 1 < args.len() => {
+                url = args[i + 1].clone();
+                i += 2;
+            }
+            "--remote" if i + 1 < args.len() => {
+                remote = args[i + 1].clone();
+                i += 2;
+            }
+            "--branch" if i + 1 < args.len() => {
+                branch = args[i + 1].clone();
+                i += 2;
+            }
+            _ => {
+                i += 1;
+            }
         }
     }
-    if project.is_empty() { eprintln!("--project is required"); return 1; }
-    let worktree = match resolve_project_git_worktree(repo_root, &project) { Ok(p) => p, Err(e) => { eprintln!("{}", e); return 1; } };
+    if project.is_empty() {
+        eprintln!("--project is required");
+        return 1;
+    }
+    let worktree = match resolve_project_git_worktree(repo_root, &project) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{}", e);
+            return 1;
+        }
+    };
     match sub.as_str() {
         "add-remote" => {
-            if name.is_empty() || url.is_empty() { eprintln!("--name and --url are required"); return 1; }
-            if let Err(e) = git(&worktree, &["remote","add",&name,&url]) { eprintln!("{}", e); return 1; }
-            println!("{}\tremote-added\t{}\t{}", project, name, url); 0
+            if name.is_empty() || url.is_empty() {
+                eprintln!("--name and --url are required");
+                return 1;
+            }
+            if let Err(e) = git(&worktree, &["remote", "add", &name, &url]) {
+                eprintln!("{}", e);
+                return 1;
+            }
+            println!("{}\tremote-added\t{}\t{}", project, name, url);
+            0
         }
         "fetch" => {
-            if let Err(e) = git(&worktree, &["fetch",&remote,"--prune"]) { eprintln!("{}", e); return 1; }
-            println!("{}\tfetched\t{}", project, remote); 0
+            if let Err(e) = git(&worktree, &["fetch", &remote, "--prune"]) {
+                eprintln!("{}", e);
+                return 1;
+            }
+            println!("{}\tfetched\t{}", project, remote);
+            0
         }
         "push" => {
-            let br = if branch.is_empty() { match current_branch(&worktree) { Ok(b) => b, Err(e) => { eprintln!("{}", e); return 1; } } } else { branch.clone() };
-            if let Err(e) = git(&worktree, &["push","-u",&remote,&br]) { eprintln!("{}", e); return 1; }
-            println!("{}\tpushed\t{}\t{}", project, remote, br); 0
+            let br = if branch.is_empty() {
+                match current_branch(&worktree) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        eprintln!("{}", e);
+                        return 1;
+                    }
+                }
+            } else {
+                branch.clone()
+            };
+            if let Err(e) = git(&worktree, &["push", "-u", &remote, &br]) {
+                eprintln!("{}", e);
+                return 1;
+            }
+            println!("{}\tpushed\t{}\t{}", project, remote, br);
+            0
         }
         "sync" => {
-            if let Err(e) = git(&worktree, &["fetch",&remote,"--prune"]) { eprintln!("{}", e); return 1; }
-            let br = if branch.is_empty() { match current_branch(&worktree) { Ok(b) => b, Err(e) => { eprintln!("{}", e); return 1; } } } else { branch.clone() };
-            if let Err(e) = git(&worktree, &["push","-u",&remote,&br]) { eprintln!("{}", e); return 1; }
+            if let Err(e) = git(&worktree, &["fetch", &remote, "--prune"]) {
+                eprintln!("{}", e);
+                return 1;
+            }
+            let br = if branch.is_empty() {
+                match current_branch(&worktree) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        eprintln!("{}", e);
+                        return 1;
+                    }
+                }
+            } else {
+                branch.clone()
+            };
+            if let Err(e) = git(&worktree, &["push", "-u", &remote, &br]) {
+                eprintln!("{}", e);
+                return 1;
+            }
             println!("{}\tfetched\t{}", project, remote);
-            println!("{}\tpushed\t{}\t{}", project, remote, br); 0
+            println!("{}\tpushed\t{}\t{}", project, remote, br);
+            0
         }
-        _ => { eprintln!("Unsupported project command"); 1 }
+        _ => {
+            eprintln!("Unsupported project command");
+            1
+        }
     }
 }
 
 fn resolve_project_git_worktree(repo_root: &Path, slug: &str) -> Result<String, String> {
     let p = repo_root.join("projects").join(slug).join("README.md");
-    let text = fs::read_to_string(&p).map_err(|_| format!("Project document does not exist: {}", p.display()))?;
+    let text = fs::read_to_string(&p)
+        .map_err(|_| format!("Project document does not exist: {}", p.display()))?;
     let (meta, _body) = parse_frontmatter(&text).map_err(|e| e.to_string())?;
     let gw = meta.get("git_worktree").cloned().unwrap_or_default();
-    if gw.trim().is_empty() { return Err(format!("Project document is missing git_worktree: {}", p.display())); }
+    if gw.trim().is_empty() {
+        return Err(format!(
+            "Project document is missing git_worktree: {}",
+            p.display()
+        ));
+    }
     resolve_git_worktree(&gw)
 }
 
 fn resolve_git_worktree(p: &str) -> Result<String, String> {
     let abs = must_abs(p);
-    let md = Path::new(&abs).metadata().map_err(|_| format!("Git worktree path does not exist: {}", abs))?;
-    if !md.is_dir() { return Err(format!("Git worktree path does not exist: {}", abs)); }
-    if !is_git_worktree(&abs) { return Err(format!("Git worktree path is not a git working tree: {}", abs)); }
+    let md = Path::new(&abs)
+        .metadata()
+        .map_err(|_| format!("Git worktree path does not exist: {}", abs))?;
+    if !md.is_dir() {
+        return Err(format!("Git worktree path does not exist: {}", abs));
+    }
+    if !is_git_worktree(&abs) {
+        return Err(format!(
+            "Git worktree path is not a git working tree: {}",
+            abs
+        ));
+    }
     Ok(abs)
 }
 
 fn is_git_worktree(path: &str) -> bool {
-    let out = run_cmd(Some(path), "git", &["rev-parse","--is-inside-work-tree"]);
+    let out = run_cmd(Some(path), "git", &["rev-parse", "--is-inside-work-tree"]);
     out.code == 0 && out.stdout.trim() == "true"
 }
 
 fn must_abs(p: &str) -> String {
     let p = expand_user(p);
-    let abs = if Path::new(&p).is_absolute() { PathBuf::from(&p) } else { env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join(&p) };
+    let abs = if Path::new(&p).is_absolute() {
+        PathBuf::from(&p)
+    } else {
+        env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(&p)
+    };
     fs::canonicalize(&abs).unwrap_or(abs).display().to_string()
 }
 
 fn git(cwd: &str, args: &[&str]) -> Result<(), String> {
     let out = run_cmd(Some(cwd), "git", args);
-    if out.code != 0 { return Err(out.stderr.trim().to_string()); }
+    if out.code != 0 {
+        return Err(out.stderr.trim().to_string());
+    }
     Ok(())
 }
 
 fn current_branch(cwd: &str) -> Result<String, String> {
-    let out = run_cmd(Some(cwd), "git", &["branch","--show-current"]);
-    if out.code != 0 { return Err(out.stderr); }
+    let out = run_cmd(Some(cwd), "git", &["branch", "--show-current"]);
+    if out.code != 0 {
+        return Err(out.stderr);
+    }
     let s = out.stdout.trim().to_string();
-    if s.is_empty() { return Err(format!("Git worktree is not on a branch: {}", cwd)); }
+    if s.is_empty() {
+        return Err(format!("Git worktree is not on a branch: {}", cwd));
+    }
     Ok(s)
 }
 
-struct CmdOut { stdout: String, stderr: String, code: i32 }
+struct CmdOut {
+    stdout: String,
+    stderr: String,
+    code: i32,
+}
 fn run_cmd(cwd: Option<&str>, name: &str, args: &[&str]) -> CmdOut {
     let mut cmd = Command::new(name);
     cmd.args(args);
-    if let Some(dir) = cwd { cmd.current_dir(dir); }
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
     match cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).output() {
-        Ok(o) => CmdOut { stdout: String::from_utf8_lossy(&o.stdout).to_string(), stderr: String::from_utf8_lossy(&o.stderr).to_string(), code: o.status.code().unwrap_or(1) },
-        Err(e) => CmdOut { stdout: String::new(), stderr: e.to_string(), code: 1 },
+        Ok(o) => CmdOut {
+            stdout: String::from_utf8_lossy(&o.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&o.stderr).to_string(),
+            code: o.status.code().unwrap_or(1),
+        },
+        Err(e) => CmdOut {
+            stdout: String::new(),
+            stderr: e.to_string(),
+            code: 1,
+        },
     }
 }
 
 fn new_uuid() -> String {
     // Not a real UUID v4, but good enough for tests without external crates
-    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos();
-    format!("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}", (t & 0xffffffff) as u64, ((t>>32)&0xffff) as u64, ((t>>48)&0xffff) as u64, ((t>>16)&0xffff) as u64, (t & 0xffffffffffff) as u128)
+    let t = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    format!(
+        "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
+        (t & 0xffffffff) as u64,
+        ((t >> 32) & 0xffff) as u64,
+        ((t >> 48) & 0xffff) as u64,
+        ((t >> 16) & 0xffff) as u64,
+        (t & 0xffffffffffff) as u128
+    )
 }
 
 #[cfg(test)]

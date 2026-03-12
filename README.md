@@ -37,11 +37,11 @@ Current layout and entrypoint details also live in `docs/specs/repository-layout
 
 ## Project Status / 项目状态
 
-- `implementations/python/kg`: the main validated CLI path today, and the repository's automated tests are centered on this implementation
+- `implementations/python/kg`: the most fully documented runtime path today
 - `implementations/go/kg`: an alternative Go implementation with a build entrypoint under `cmd/kg`
 - `implementations/rust/kg`: an alternative Rust implementation with its own Cargo crate
 
-- `implementations/python/kg`：当前主要验证路径，仓库里的自动化测试主要围绕这套实现展开
+- `implementations/python/kg`：当前文档最完整、最适合作为参考的运行路径
 - `implementations/go/kg`：Go 版本实现，构建入口位于 `cmd/kg`
 - `implementations/rust/kg`：Rust 版本实现，使用独立的 Cargo crate
 
@@ -99,15 +99,17 @@ cd implementations/rust/kg && cargo build
 
 ## Implementation Notes / 实现说明
 
-- Python is the only implementation currently covered by the repository's end-to-end unit tests.
+- Python, Go, and Rust all cover the same 1.0 command surface for create, capture, validate, query, and project-remote workflows.
+- Python remains the most fully documented implementation in the repository.
 - Go and Rust are kept in-tree as parallel CLI implementations and can be built independently from their language-specific roots.
 - Go and Rust can also be built for multiple target platforms from the root `Makefile`.
-- `--repo <path>` is required for CLI operations. This repository contains tooling code, tests, templates, and docs, not the managed knowledge content itself.
+- If `--repo` is omitted, `kg` uses `~/.knowledge-galax` as the default knowledge repository and creates the base layout on demand.
 
-- 当前只有 Python 实现被仓库内的端到端单元测试完整覆盖。
+- Python、Go、Rust 三种实现现在都覆盖了相同的 1.0 命令面，包括创建、捕获、校验、查询和项目远端操作。
+- Python 仍然是当前仓库里文档最完整的实现。
 - Go 和 Rust 作为并行 CLI 实现保留在仓库中，可以从各自语言目录独立构建。
 - Go 和 Rust 也可以通过根目录 `Makefile` 构建多平台目标产物。
-- CLI 操作要求传入 `--repo <path>`。这个仓库本身只保存工具代码、测试、模板和文档，不保存被管理的知识内容。
+- 如果没有传入 `--repo`，`kg` 会默认使用 `~/.knowledge-galax` 作为知识仓库，并在需要时自动创建基础目录。
 
 ## Python CLI Usage / Python CLI 用法
 
@@ -128,6 +130,22 @@ python3 -m implementations.python.kg --repo /path/to/content-repo create project
 Each command prints the created relative path.
 
 每条命令都会输出创建后的相对路径。
+
+You can also omit `--repo` and let the CLI use `~/.knowledge-galax`.
+
+你也可以省略 `--repo`，让 CLI 自动使用 `~/.knowledge-galax`。
+
+### Capture Content / 捕获内容
+
+```bash
+python3 -m implementations.python.kg append daily --date 2026-03-12 < capture.txt
+printf 'Captured from stdin\n' | python3 -m implementations.python.kg create note --title "Streamed Note" --stdin
+python3 -m implementations.python.kg import clipboard note --title "Clipboard Note"
+```
+
+`append daily` appends a timestamped capture block to the target daily, creating that daily first when needed.
+
+`append daily` 会向目标 daily 文档末尾追加一个带时间戳的捕获块；如果该 daily 不存在，会先自动创建。
 
 `create project` only accepts an already existing local git working directory. The CLI still does not clone repositories or merge/pull changes, but it can manage remotes and run project-scoped `fetch`, `push`, and `sync`.
 
@@ -171,9 +189,9 @@ python3 -m implementations.python.kg --repo /path/to/content-repo stats
 
 ## Go And Rust Usage / Go 与 Rust 用法
 
-At the repository level, Go and Rust are currently documented mainly as implementation roots and build targets.
+At the repository level, Go and Rust are documented as parallel runtime implementations as well as build targets.
 
-在仓库级 README 中，Go 和 Rust 当前主要作为实现目录和构建目标来说明。
+在仓库级 README 中，Go 和 Rust 不再只是构建目标，也作为并行运行时实现来说明。
 
 ```bash
 cd implementations/go/kg && go build ./cmd/kg

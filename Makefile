@@ -54,13 +54,21 @@ build-rust-cross:
 test: test-python test-go test-rust
 
 test-python:
-	python3 -m unittest discover -s tests -v
+	python3 -m unittest \
+		tests.test_cli_capture \
+		tests.test_cli_create \
+		tests.test_cli_project_remote \
+		tests.test_cli_query \
+		tests.test_cli_smoke \
+		tests.test_cli_validate \
+		-v
 
 test-go:
-	tmp=$$(mktemp -d); (cd $(abspath implementations/go/kg) && go build -o "$$tmp/kg" ./cmd/kg); rm -rf "$$tmp"
+	python3 -m unittest tests.test_go_cli_behavior -v
 
 test-rust:
-	cd implementations/rust/kg && cargo test
+	cargo +stable test --manifest-path implementations/rust/kg/Cargo.toml
+	python3 -m unittest tests.test_rust_cli_behavior -v
 
 all: build build-rust test
 

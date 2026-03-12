@@ -33,7 +33,7 @@ class CommandError(Exception):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="kg")
-    parser.add_argument("--repo", required=True)
+    parser.add_argument("--repo")
 
     subparsers = parser.add_subparsers(dest="command")
     create_parser = subparsers.add_parser("create")
@@ -42,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     note_parser = create_subparsers.add_parser("note")
     note_parser.add_argument("--title", required=True)
+    note_parser.add_argument("--stdin", action="store_true")
 
     daily_parser = create_subparsers.add_parser("daily")
     daily_parser.add_argument("--date")
@@ -56,6 +57,24 @@ def build_parser() -> argparse.ArgumentParser:
     project_parser = create_subparsers.add_parser("project")
     project_parser.add_argument("--title", required=True)
     project_parser.add_argument("--git-worktree", required=True)
+
+    append_parser = subparsers.add_parser("append")
+    append_subparsers = append_parser.add_subparsers(dest="append_type")
+    append_subparsers.required = True
+
+    append_daily_parser = append_subparsers.add_parser("daily")
+    append_daily_parser.add_argument("--date")
+
+    import_parser = subparsers.add_parser("import")
+    import_subparsers = import_parser.add_subparsers(dest="import_type")
+    import_subparsers.required = True
+
+    clipboard_parser = import_subparsers.add_parser("clipboard")
+    clipboard_subparsers = clipboard_parser.add_subparsers(dest="clipboard_type")
+    clipboard_subparsers.required = True
+
+    clipboard_note_parser = clipboard_subparsers.add_parser("note")
+    clipboard_note_parser.add_argument("--title", required=True)
 
     project_ops_parser = subparsers.add_parser("project")
     project_ops_subparsers = project_ops_parser.add_subparsers(dest="project_command")
@@ -107,6 +126,7 @@ def create_document(
     title: str,
     target_path: Path,
     extra_replacements: dict[str, str] | None = None,
+    body: str | None = None,
 ) -> Path:
     if target_path.exists():
         raise CommandError(f"Target file already exists: {target_path}")
@@ -127,22 +147,93 @@ def create_document(
         template_name,
         replacements,
     )
+    if body:
+        rendered = append_body(rendered, body)
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.write_text(rendered, encoding="utf-8")
     return target_path
 
 
+def append_body(rendered: str, body: str) -> str:
+    cleaned = body.strip()
+    if not cleaned:
+        return rendered
+    return f"{rendered.rstrip()}\n\n{cleaned}\n"
+
+
+def read_stdin_text() -> str:
+    body = sys.stdin.read().strip()
+    if not body:
+        raise CommandError("stdin is empty")
+    return body
+
+
+def read_clipboard_text() -> str:
+    if sys.platform == "darwin":
+        commands = (["pbpaste"],)
+    elif sys.platform.startswith("win"):
+        commands = (["powershell", "-NoProfile", "-Command", "Get-Clipboard"],)
+    else:
+        commands = (
+            ["wl-paste", "-n"],
+            ["xclip", "-selection", "clipboard", "-o"],
+        )
+
+    last_error = "clipboard command is unavailable"
+    for command in commands:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            text = result.stdout.strip()
+            if not text:
+                raise CommandError("clipboard is empty")
+            return text
+        stderr = result.stderr.strip() or result.stdout.strip()
+        if stderr:
+            last_error = stderr
+    raise CommandError(last_error)
+
+
+def append_daily_capture(repo_root: Path, target_date: date, body: str) -> Path:
+    target_path = daily_path(repo_root, target_date)
+    if not target_path.exists():
+        create_document(
+            repo_root=repo_root,
+            template_name="daily",
+            title=target_date.isoformat(),
+            target_path=target_path,
+            extra_replacements={
+                "date": target_date.isoformat(),
+                "slug": target_date.isoformat(),
+            },
+        )
+
+    timestamp = utc_timestamp()
+    entry = f"\n\n## Capture {timestamp}\n\n{body.strip()}\n"
+    target_path.write_text(
+        f"{target_path.read_text(encoding='utf-8').rstrip()}{entry}",
+        encoding="utf-8",
+    )
+    return target_path
+
+
 def run(args: argparse.Namespace) -> int:
     if args.command == "create":
-        repo_root = resolve_repo_root(args.repo)
+        repo_root = resolve_repo_root(args.repo, create_if_missing=True)
         if args.create_type == "note":
             slug = slugify(args.title)
+            body = read_stdin_text() if args.stdin else None
             created_path = create_document(
                 repo_root=repo_root,
                 template_name="note",
                 title=args.title,
                 target_path=note_path(repo_root, slug),
+                body=body,
             )
         elif args.create_type == "daily":
             target_date = parse_iso_date(args.date)
@@ -189,6 +280,28 @@ def run(args: argparse.Namespace) -> int:
             raise CommandError("Unsupported create type")
         print(created_path.relative_to(repo_root).as_posix())
         return 0
+    if args.command == "append":
+        repo_root = resolve_repo_root(args.repo, create_if_missing=True)
+        if args.append_type != "daily":
+            raise CommandError("Unsupported append type")
+        target_date = parse_iso_date(args.date)
+        created_path = append_daily_capture(repo_root, target_date, read_stdin_text())
+        print(created_path.relative_to(repo_root).as_posix())
+        return 0
+    if args.command == "import":
+        repo_root = resolve_repo_root(args.repo, create_if_missing=True)
+        if args.import_type != "clipboard" or args.clipboard_type != "note":
+            raise CommandError("Unsupported import type")
+        slug = slugify(args.title)
+        created_path = create_document(
+            repo_root=repo_root,
+            template_name="note",
+            title=args.title,
+            target_path=note_path(repo_root, slug),
+            body=read_clipboard_text(),
+        )
+        print(created_path.relative_to(repo_root).as_posix())
+        return 0
     if args.command == "validate":
         repo_root = resolve_repo_root(args.repo)
         errors = validate_repository(repo_root)
@@ -199,7 +312,7 @@ def run(args: argparse.Namespace) -> int:
         print("OK")
         return 0
     if args.command == "project":
-        repo_root = resolve_repo_root(args.repo)
+        repo_root = resolve_repo_root(args.repo, create_if_missing=True)
         try:
             git_worktree = resolve_project_git_worktree(repo_root, args.project)
             if args.project_command == "add-remote":
@@ -347,6 +460,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args = parser.parse_args(normalize_argv(raw_argv))
         return run(args)
     except CommandError as exc:
-        parser.exit(status=1, message=f"{exc}\n")
+        sys.stderr.write(f"{exc}\n")
+        return 1
     except SystemExit as exc:
         return int(exc.code)

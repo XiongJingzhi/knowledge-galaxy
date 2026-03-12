@@ -6,13 +6,13 @@ This directory contains the Go implementation of the `kg` CLI.
 
 ## Status / 状态
 
-The Go implementation is kept in-tree as an alternative implementation of the CLI. It currently builds successfully from this module root and covers the same top-level command surface as the other implementations: `create`, `validate`, `list`, `search`, `stats`, and `project`.
+The Go implementation is kept in-tree as an alternative implementation of the CLI. It currently builds successfully from this module root and covers the same 1.0 command surface as the other implementations: `create`, `append`, `import`, `validate`, `list`, `search`, `stats`, and `project`.
 
-Go 版本作为 CLI 的并行实现保留在仓库中。它目前可以从这个模块根目录成功构建，并覆盖与其他实现相同的顶层命令集合：`create`、`validate`、`list`、`search`、`stats` 和 `project`。
+Go 版本作为 CLI 的并行实现保留在仓库中。它目前可以从这个模块根目录成功构建，并覆盖与其他实现相同的 1.0 命令集合：`create`、`append`、`import`、`validate`、`list`、`search`、`stats` 和 `project`。
 
-The repository's automated end-to-end tests are not centered on this implementation. Python remains the primary validated path today.
+The repository now runs dedicated behavior tests against this implementation, while Python remains the most fully documented path.
 
-仓库里的自动化端到端测试目前并不是围绕这套实现展开的。当前主要验证路径仍然是 Python 版本。
+仓库现在会对这套实现运行专门的行为测试，同时 Python 仍然是文档最完整的实现路径。
 
 ## Location / 目录位置
 
@@ -62,9 +62,9 @@ From the repository root:
 make test-go
 ```
 
-This target performs a module-root build check without leaving build artifacts in the source tree.
+This target runs the Go behavior test suite from the repository root.
 
-这个命令会在模块根目录执行构建验证，同时避免把构建产物留在源码目录里。
+这个命令会从仓库根目录运行 Go 行为测试套件。
 
 ## Command Surface / 命令范围
 
@@ -73,18 +73,20 @@ The Go implementation currently includes:
 当前 Go 实现包含：
 
 - document creation commands under `create`
+- capture commands under `append` and `import`
 - repository validation
 - repository listing, search, and stats
 - project git operations under `project`
 
 - `create` 下的文档创建命令
+- `append` 和 `import` 下的捕获命令
 - 仓库校验
 - 仓库的列表、搜索和统计
 - `project` 下的项目 git 操作
 
-Like the other implementations, CLI operations require `--repo <path>`.
+If `--repo` is omitted, the CLI uses `~/.knowledge-galax` and creates the base repository layout on demand.
 
-和其他实现一样，CLI 操作要求传入 `--repo <path>`。
+如果没有传入 `--repo`，CLI 会默认使用 `~/.knowledge-galax`，并在需要时自动创建基础仓库结构。
 
 ## Usage Examples / 使用示例
 
@@ -108,6 +110,9 @@ Create documents:
 ./kg --repo /path/to/content-repo create decision --title "Choose SQLite"
 ./kg --repo /path/to/content-repo create review --title "Weekly Review" --date 2026-03-11
 ./kg --repo /path/to/content-repo create project --title "Atlas" --git-worktree ~/src/atlas
+printf 'Captured from stdin\n' | ./kg create note --title "Streamed Note" --stdin
+printf 'Captured for today\n' | ./kg append daily
+./kg import clipboard note --title "Clipboard Note"
 ```
 
 Validate and query a repository:
@@ -134,16 +139,14 @@ Operate project repositories:
 
 ## Relationship To Python / 与 Python 实现的关系
 
-Python is still the reference implementation for examples and tests in this repository. The Go implementation is intended to stay functionally aligned, but its documentation is currently focused on buildability and implementation location rather than full operational parity guarantees.
+Python is still the reference implementation for most narrative examples, but the Go implementation now participates in repository-level behavior testing and is intended to remain command-compatible for the 1.0 surface.
 
-Python 版本仍然是当前仓库中示例和测试的参考实现。Go 版本的目标是保持功能对齐，但目前文档重点放在构建方式和实现位置上，而不是对完整运行一致性做强保证。
+Python 版本仍然是当前仓库中大多数叙述性示例的参考实现，但 Go 版本现在已经纳入仓库级行为测试，并以保持 1.0 命令兼容为目标。
 
 ## Known Limitations / 已知限制
 
-- The repository's main unit test suite does not execute this implementation end-to-end.
-- Root-level documentation still uses Python for detailed command examples.
+- Root-level narrative examples still prefer Python when only one implementation is shown.
 - Any future behavior comparisons should be verified explicitly against the Python implementation.
 
-- 仓库主单元测试套件目前不会对这套实现做端到端执行。
-- 根级文档中的详细命令示例仍然以 Python 版本为主。
+- 根级文档中的叙述性命令示例在只展示一种实现时仍优先使用 Python。
 - 未来如果要比较行为一致性，需要显式对照 Python 版本验证。

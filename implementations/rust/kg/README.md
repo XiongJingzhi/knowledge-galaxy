@@ -6,13 +6,13 @@ This directory contains the Rust implementation of the `kg` CLI.
 
 ## Status / 状态
 
-The Rust implementation is kept in-tree as an alternative implementation of the CLI. It builds successfully from this crate root and exposes the same top-level command surface as the other implementations: `create`, `validate`, `list`, `search`, `stats`, and `project`.
+The Rust implementation is kept in-tree as an alternative implementation of the CLI. It builds successfully from this crate root and exposes the same 1.0 command surface as the other implementations: `create`, `append`, `import`, `validate`, `list`, `search`, `stats`, and `project`.
 
-Rust 版本作为 CLI 的并行实现保留在仓库中。它目前可以从这个 crate 根目录成功构建，并暴露与其他实现相同的顶层命令集合：`create`、`validate`、`list`、`search`、`stats` 和 `project`。
+Rust 版本作为 CLI 的并行实现保留在仓库中。它目前可以从这个 crate 根目录成功构建，并暴露与其他实现相同的 1.0 命令集合：`create`、`append`、`import`、`validate`、`list`、`search`、`stats` 和 `project`。
 
-The repository's automated end-to-end tests are not centered on this implementation. Python remains the primary validated path today.
+The repository now runs dedicated behavior tests against this implementation, while Python remains the most fully documented path.
 
-仓库里的自动化端到端测试目前并不是围绕这套实现展开的。当前主要验证路径仍然是 Python 版本。
+仓库现在会对这套实现运行专门的行为测试，同时 Python 仍然是文档最完整的实现路径。
 
 ## Location / 目录位置
 
@@ -62,9 +62,9 @@ From the repository root:
 make test-rust
 ```
 
-This target currently performs a crate build check.
+This target runs crate unit tests and the Rust behavior test suite from the repository root.
 
-这个命令当前执行的是 crate 构建验证。
+这个命令会运行 crate 单元测试以及仓库级 Rust 行为测试。
 
 ## Command Surface / 命令范围
 
@@ -73,18 +73,20 @@ The Rust implementation currently includes:
 当前 Rust 实现包含：
 
 - document creation commands under `create`
+- capture commands under `append` and `import`
 - repository validation
 - repository listing, search, and stats
 - project git operations under `project`
 
 - `create` 下的文档创建命令
+- `append` 和 `import` 下的捕获命令
 - 仓库校验
 - 仓库的列表、搜索和统计
 - `project` 下的项目 git 操作
 
-Like the other implementations, CLI operations require `--repo <path>`.
+If `--repo` is omitted, the CLI uses `~/.knowledge-galax` and creates the base repository layout on demand.
 
-和其他实现一样，CLI 操作要求传入 `--repo <path>`。
+如果没有传入 `--repo`，CLI 会默认使用 `~/.knowledge-galax`，并在需要时自动创建基础仓库结构。
 
 ## Usage Examples / 使用示例
 
@@ -108,6 +110,9 @@ Create documents:
 ./target/debug/kg --repo /path/to/content-repo create decision --title "Choose SQLite"
 ./target/debug/kg --repo /path/to/content-repo create review --title "Weekly Review" --date 2026-03-11
 ./target/debug/kg --repo /path/to/content-repo create project --title "Atlas" --git-worktree ~/src/atlas
+printf 'Captured from stdin\n' | ./target/debug/kg create note --title "Streamed Note" --stdin
+printf 'Captured for today\n' | ./target/debug/kg append daily
+./target/debug/kg import clipboard note --title "Clipboard Note"
 ```
 
 Validate and query a repository:
@@ -134,16 +139,14 @@ Operate project repositories:
 
 ## Relationship To Python / 与 Python 实现的关系
 
-Python is still the reference implementation for examples and tests in this repository. The Rust implementation is intended to stay functionally aligned, but the repository currently treats it mainly as an in-tree implementation and build target rather than the primary documented runtime path.
+Python is still the reference implementation for most narrative examples, but the Rust implementation now participates in repository-level behavior testing and is intended to remain command-compatible for the 1.0 surface.
 
-Python 版本仍然是当前仓库中示例和测试的参考实现。Rust 版本的目标是保持功能对齐，但仓库目前主要把它作为树内实现和构建目标来维护，而不是作为首选运行路径来记录。
+Python 版本仍然是当前仓库中大多数叙述性示例的参考实现，但 Rust 版本现在已经纳入仓库级行为测试，并以保持 1.0 命令兼容为目标。
 
 ## Known Limitations / 已知限制
 
-- The repository's main unit test suite does not execute this implementation end-to-end.
 - Current Rust builds emit compiler warnings in `src/main.rs`.
-- Root-level documentation still uses Python for detailed command examples.
+- Root-level narrative examples still prefer Python when only one implementation is shown.
 
-- 仓库主单元测试套件目前不会对这套实现做端到端执行。
 - 当前 Rust 构建在 `src/main.rs` 中仍会产生编译 warning。
-- 根级文档中的详细命令示例仍然以 Python 版本为主。
+- 根级文档中的叙述性命令示例在只展示一种实现时仍优先使用 Python。

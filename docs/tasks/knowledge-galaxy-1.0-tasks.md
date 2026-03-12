@@ -2,9 +2,9 @@
 
 ## Execution Note
 
-This round only executes the documentation and repository skeleton work.
+This task list now reflects the current repository state after the multi-language CLI, capture workflow, testing, and documentation work completed through March 12, 2026.
 
-The remaining tasks stay pending until explicit confirmation.
+Only the still-missing 1.0 areas remain unchecked.
 
 ## Phase 1. Foundation Docs And Skeleton
 
@@ -23,10 +23,10 @@ The remaining tasks stay pending until explicit confirmation.
 
 ## Phase 3. CLI Foundation
 
-- [ ] Choose CLI runtime and packaging approach
-- [ ] Scaffold the `kg` command entrypoint
-- [ ] Implement create commands for `daily`, `note`, `decision`, and `review`
-- [ ] Implement capture commands for append, `stdin`, and clipboard workflows
+- [x] Choose CLI runtime and packaging approach
+- [x] Scaffold the `kg` command entrypoint
+- [x] Implement create commands for `daily`, `note`, `decision`, and `review`
+- [x] Implement capture commands for append, `stdin`, and clipboard workflows
 
 ## Phase 4. Asset Management
 
@@ -36,21 +36,21 @@ The remaining tasks stay pending until explicit confirmation.
 
 ## Phase 5. Indexing And Query
 
-- [ ] Define the SQLite schema for document metadata and full-text search
-- [ ] Implement repository-to-index synchronization
-- [ ] Implement `kg list`, `kg search`, and `kg stats`
+- [x] Define the SQLite schema for document metadata and full-text search
+- [x] Implement repository-to-index synchronization
+- [x] Implement `kg list`, `kg search`, and `kg stats`
 - [ ] Define index rebuild and export behavior
 
 ## Phase 6. Validation
 
-- [ ] Implement frontmatter validation
-- [ ] Implement path and naming validation
-- [ ] Implement unique ID validation
+- [x] Implement frontmatter validation
+- [x] Implement path and naming validation
+- [x] Implement unique ID validation
 - [ ] Implement reference and asset validation
 
 ## Phase 7. Testing And Release Readiness
 
-- [ ] Add tests for document creation rules
-- [ ] Add tests for query and validation flows
-- [ ] Add repository bootstrap documentation
-- [ ] Review naming consistency and remove unused structure
+- [x] Add tests for document creation rules
+- [x] Add tests for query and validation flows
+- [x] Add repository bootstrap documentation
+- [x] Review naming consistency and remove unused structure

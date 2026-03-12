@@ -7,14 +7,32 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 )
+
+const defaultRepoDir = ".knowledge-galax"
+
+var repositoryDirectories = []string{
+	"templates",
+	"notes",
+	"dailies",
+	"decisions",
+	"reviews",
+	"references",
+	"themes",
+	"projects",
+	"assets",
+	"inbox",
+	"indexes",
+}
 
 var builtinTemplates = map[string]string{
 	"daily": `---
@@ -158,7 +176,7 @@ func main() {
 
 func run(argv []string) int {
 	if len(argv) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: kg --repo <path> <command> [args]")
+		fmt.Fprintln(os.Stderr, "usage: kg [--repo <path>] <command> [args]")
 		return 1
 	}
 
@@ -181,24 +199,24 @@ func run(argv []string) int {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}
-	if *repoFlag == "" {
-		fmt.Fprintln(os.Stderr, "--repo is required")
-		return 1
-	}
-	repoRoot, err := resolveRepoRoot(*repoFlag)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		return 1
-	}
-
 	rest := fs.Args()
 	if len(rest) == 0 {
 		fmt.Fprintln(os.Stderr, "missing command")
 		return 1
 	}
+	createIfMissing := rest[0] == "create" || rest[0] == "append" || rest[0] == "import" || rest[0] == "project"
+	repoRoot, err := resolveRepoRoot(*repoFlag, createIfMissing)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
 	switch rest[0] {
 	case "create":
 		return cmdCreate(repoRoot, rest[1:])
+	case "append":
+		return cmdAppend(repoRoot, rest[1:])
+	case "import":
+		return cmdImport(repoRoot, rest[1:])
 	case "validate":
 		return cmdValidate(repoRoot)
 	case "list":
@@ -220,16 +238,42 @@ func run(argv []string) int {
 
 // --- repository helpers ---
 
-func resolveRepoRoot(p string) (string, error) {
-    abs, err := filepath.Abs(os.ExpandEnv(expandUser(p)))
+func resolveRepoRoot(p string, createIfMissing bool) (string, error) {
+	if strings.TrimSpace(p) == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		p = filepath.Join(home, defaultRepoDir)
+		createIfMissing = true
+	}
+	abs, err := filepath.Abs(os.ExpandEnv(expandUser(p)))
 	if err != nil {
 		return "", err
 	}
 	st, err := os.Stat(abs)
-	if err != nil || !st.IsDir() {
+	if err != nil {
+		if createIfMissing && os.IsNotExist(err) {
+			return ensureRepoLayout(abs)
+		}
+		return "", fmt.Errorf("Repository path does not exist: %s", abs)
+	}
+	if !st.IsDir() {
 		return "", fmt.Errorf("Repository path does not exist: %s", abs)
 	}
 	return abs, nil
+}
+
+func ensureRepoLayout(root string) (string, error) {
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return "", err
+	}
+	for _, dir := range repositoryDirectories {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
+			return "", err
+		}
+	}
+	return root, nil
 }
 
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
@@ -256,9 +300,11 @@ func cmdCreate(repoRoot string, args []string) int {
 	var title string
 	var dateText string
 	var gitWorktree string
+	var readBodyFromStdin bool
 	flags.StringVar(&title, "title", "", "title")
 	flags.StringVar(&dateText, "date", "", "date")
 	flags.StringVar(&gitWorktree, "git-worktree", "", "git worktree path")
+	flags.BoolVar(&readBodyFromStdin, "stdin", false, "read body from stdin")
 	if err := flags.Parse(args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
@@ -273,16 +319,28 @@ func cmdCreate(repoRoot string, args []string) int {
 			fmt.Fprintln(os.Stderr, "--title is required")
 			return 1
 		}
+		body := ""
+		if readBodyFromStdin {
+			var err error
+			body, err = readStdinText()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				return 1
+			}
+		}
 		slug, err := slugify(title)
-		if err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		target := filepath.Join(repoRoot, "notes", slug+".md")
 		return createFromTemplate(repoRoot, "note", map[string]string{
-			"id": newUUID(),
-			"title": title,
-			"slug": slug,
+			"id":         newUUID(),
+			"title":      title,
+			"slug":       slug,
 			"created_at": isoNow,
 			"updated_at": isoNow,
-		}, target)
+		}, body, target)
 	case "daily":
 		var d time.Time
 		var err error
@@ -291,75 +349,110 @@ func cmdCreate(repoRoot string, args []string) int {
 			dateText = d.Format("2006-01-02")
 		} else {
 			d, err = time.Parse("2006-01-02", dateText)
-			if err != nil { fmt.Fprintln(os.Stderr, "Invalid date: "+dateText); return 1 }
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Invalid date: "+dateText)
+				return 1
+			}
 		}
 		target := filepath.Join(repoRoot, "dailies", d.Format("2006"), d.Format("01"), d.Format("02")+".md")
 		return createFromTemplate(repoRoot, "daily", map[string]string{
-			"id": newUUID(),
-			"title": dateText,
-			"slug": dateText,
-			"date": dateText,
+			"id":         newUUID(),
+			"title":      dateText,
+			"slug":       dateText,
+			"date":       dateText,
 			"created_at": isoNow,
 			"updated_at": isoNow,
-		}, target)
+		}, "", target)
 	case "decision":
-		if title == "" { fmt.Fprintln(os.Stderr, "--title is required"); return 1 }
+		if title == "" {
+			fmt.Fprintln(os.Stderr, "--title is required")
+			return 1
+		}
 		slug, err := slugify(title)
-		if err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		target := filepath.Join(repoRoot, "decisions", slug+".md")
 		return createFromTemplate(repoRoot, "decision", map[string]string{
-			"id": newUUID(),
-			"title": title,
-			"slug": slug,
+			"id":         newUUID(),
+			"title":      title,
+			"slug":       slug,
 			"created_at": isoNow,
 			"updated_at": isoNow,
-		}, target)
+		}, "", target)
 	case "review":
-		if title == "" { fmt.Fprintln(os.Stderr, "--title is required"); return 1 }
-		if dateText == "" { dateText = utcNow.Format("2006-01-02") }
+		if title == "" {
+			fmt.Fprintln(os.Stderr, "--title is required")
+			return 1
+		}
+		if dateText == "" {
+			dateText = utcNow.Format("2006-01-02")
+		}
 		slug, err := slugify(title)
-		if err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		target := filepath.Join(repoRoot, "reviews", slug+".md")
 		return createFromTemplate(repoRoot, "review", map[string]string{
-			"id": newUUID(),
-			"title": title,
-			"slug": slug,
-			"date": dateText,
+			"id":         newUUID(),
+			"title":      title,
+			"slug":       slug,
+			"date":       dateText,
 			"created_at": isoNow,
 			"updated_at": isoNow,
-		}, target)
+		}, "", target)
 	case "project":
-		if title == "" || gitWorktree == "" { fmt.Fprintln(os.Stderr, "--title and --git-worktree are required"); return 1 }
-		if _, err := resolveGitWorktree(gitWorktree); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if title == "" || gitWorktree == "" {
+			fmt.Fprintln(os.Stderr, "--title and --git-worktree are required")
+			return 1
+		}
+		if _, err := resolveGitWorktree(gitWorktree); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		slug, err := slugify(title)
-		if err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		target := filepath.Join(repoRoot, "projects", slug, "README.md")
 		return createFromTemplate(repoRoot, "project", map[string]string{
-			"id": newUUID(),
-			"title": title,
-			"slug": slug,
+			"id":           newUUID(),
+			"title":        title,
+			"slug":         slug,
 			"git_worktree": mustAbs(gitWorktree),
-			"created_at": isoNow,
-			"updated_at": isoNow,
-		}, target)
+			"created_at":   isoNow,
+			"updated_at":   isoNow,
+		}, "", target)
 	default:
 		fmt.Fprintln(os.Stderr, "Unsupported create type")
 		return 1
 	}
 }
 
-func createFromTemplate(repoRoot, name string, repl map[string]string, target string) int {
-	if _, err := os.Stat(target); err == nil {
-		fmt.Fprintln(os.Stderr, "Target file already exists: "+target)
+func createFromTemplate(repoRoot, name string, repl map[string]string, body, target string) int {
+	if err := writeFromTemplate(repoRoot, name, repl, body, target, false); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
+	}
+	fmt.Println(relPath(repoRoot, target))
+	return 0
+}
+
+func writeFromTemplate(repoRoot, name string, repl map[string]string, body, target string, overwrite bool) error {
+	if _, err := os.Stat(target); err == nil {
+		if !overwrite {
+			return errors.New("Target file already exists: " + target)
+		}
 	}
 	tpl := filepath.Join(repoRoot, "templates", name+".md")
 	b, err := os.ReadFile(tpl)
 	if err != nil {
 		fallback, ok := builtinTemplates[name]
 		if !ok {
-			fmt.Fprintln(os.Stderr, err.Error())
-			return 1
+			return err
 		}
 		b = []byte(fallback)
 	}
@@ -367,16 +460,177 @@ func createFromTemplate(repoRoot, name string, repl map[string]string, target st
 	for k, v := range repl {
 		text = strings.ReplaceAll(text, "<"+k+">", v)
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
-	if err := os.WriteFile(target, []byte(text), 0o644); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
-	fmt.Println(relPath(repoRoot, target))
-	return 0
+	if strings.TrimSpace(body) != "" {
+		text = strings.TrimRight(text, "\n") + "\n\n" + strings.TrimSpace(body) + "\n"
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(target, []byte(text), 0o644); err != nil {
+		return err
+	}
+	return nil
 }
 
 func relPath(root, p string) string {
 	r, err := filepath.Rel(root, p)
-	if err != nil { return p }
+	if err != nil {
+		return p
+	}
 	return filepath.ToSlash(r)
+}
+
+func cmdAppend(repoRoot string, args []string) int {
+	repoRoot, err := resolveRepoRoot(repoRoot, true)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "missing append type")
+		return 1
+	}
+	if args[0] != "daily" {
+		fmt.Fprintln(os.Stderr, "Unsupported append type")
+		return 1
+	}
+	flags := flag.NewFlagSet("append", flag.ContinueOnError)
+	flags.SetOutput(newDiscard())
+	dateText := flags.String("date", "", "date")
+	if err := flags.Parse(args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	body, err := readStdinText()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	utcNow := time.Now().UTC().Truncate(time.Second)
+	targetDate := utcNow
+	if *dateText != "" {
+		targetDate, err = time.Parse("2006-01-02", *dateText)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Invalid date: "+*dateText)
+			return 1
+		}
+	}
+	dateValue := targetDate.Format("2006-01-02")
+	target := filepath.Join(repoRoot, "dailies", targetDate.Format("2006"), targetDate.Format("01"), targetDate.Format("02")+".md")
+	if _, err := os.Stat(target); errors.Is(err, os.ErrNotExist) {
+		isoNow := strings.ReplaceAll(utcNow.Format(time.RFC3339), "+00:00", "Z")
+		if err := writeFromTemplate(repoRoot, "daily", map[string]string{
+			"id":         newUUID(),
+			"title":      dateValue,
+			"slug":       dateValue,
+			"date":       dateValue,
+			"created_at": isoNow,
+			"updated_at": isoNow,
+		}, "", target, false); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
+	}
+	previous, err := os.ReadFile(target)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	entry := fmt.Sprintf("\n\n## Capture %s\n\n%s\n", strings.ReplaceAll(utcNow.Format(time.RFC3339), "+00:00", "Z"), strings.TrimSpace(body))
+	if err := os.WriteFile(target, []byte(strings.TrimRight(string(previous), "\n")+entry), 0o644); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	fmt.Println(relPath(repoRoot, target))
+	return 0
+}
+
+func cmdImport(repoRoot string, args []string) int {
+	repoRoot, err := resolveRepoRoot(repoRoot, true)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	if len(args) < 2 || args[0] != "clipboard" || args[1] != "note" {
+		fmt.Fprintln(os.Stderr, "Unsupported import type")
+		return 1
+	}
+	flags := flag.NewFlagSet("import", flag.ContinueOnError)
+	flags.SetOutput(newDiscard())
+	title := flags.String("title", "", "title")
+	if err := flags.Parse(args[2:]); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	if *title == "" {
+		fmt.Fprintln(os.Stderr, "--title is required")
+		return 1
+	}
+	body, err := readClipboardText()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	utcNow := time.Now().UTC().Truncate(time.Second)
+	isoNow := strings.ReplaceAll(utcNow.Format(time.RFC3339), "+00:00", "Z")
+	slug, err := slugify(*title)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	target := filepath.Join(repoRoot, "notes", slug+".md")
+	return createFromTemplate(repoRoot, "note", map[string]string{
+		"id":         newUUID(),
+		"title":      *title,
+		"slug":       slug,
+		"created_at": isoNow,
+		"updated_at": isoNow,
+	}, body, target)
+}
+
+func readStdinText() (string, error) {
+	body, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", err
+	}
+	trimmed := strings.TrimSpace(string(body))
+	if trimmed == "" {
+		return "", errors.New("stdin is empty")
+	}
+	return trimmed, nil
+}
+
+func readClipboardText() (string, error) {
+	var commands [][]string
+	switch runtime.GOOS {
+	case "darwin":
+		commands = [][]string{{"pbpaste"}}
+	case "windows":
+		commands = [][]string{{"powershell", "-NoProfile", "-Command", "Get-Clipboard"}}
+	default:
+		commands = [][]string{
+			{"wl-paste", "-n"},
+			{"xclip", "-selection", "clipboard", "-o"},
+		}
+	}
+	lastError := "clipboard command is unavailable"
+	for _, parts := range commands {
+		cmd := exec.Command(parts[0], parts[1:]...)
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			text := strings.TrimSpace(string(output))
+			if text == "" {
+				return "", errors.New("clipboard is empty")
+			}
+			return text, nil
+		}
+		if len(output) > 0 {
+			lastError = strings.TrimSpace(string(output))
+		} else {
+			lastError = err.Error()
+		}
+	}
+	return "", errors.New(lastError)
 }
 
 // --- validate/list/search/stats: re-index on the fly (no sqlite dep) ---
@@ -385,7 +639,9 @@ func cmdValidate(repoRoot string) int {
 	files := collectDocuments(repoRoot)
 	errs := validateAll(repoRoot, files)
 	if len(errs) > 0 {
-		for _, e := range errs { fmt.Println(e) }
+		for _, e := range errs {
+			fmt.Println(e)
+		}
 		return 1
 	}
 	fmt.Println("OK")
@@ -396,17 +652,25 @@ func cmdList(repoRoot string, args []string) int {
 	fs := flag.NewFlagSet("list", flag.ContinueOnError)
 	fs.SetOutput(newDiscard())
 	typ := fs.String("type", "", "type filter")
-	if err := fs.Parse(args); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
 	idx := buildIndex(repoRoot)
 	for _, d := range idx {
-		if *typ != "" && d.Type != *typ { continue }
+		if *typ != "" && d.Type != *typ {
+			continue
+		}
 		fmt.Printf("%s\t%s\t%s\n", d.Type, d.Title, d.Path)
 	}
 	return 0
 }
 
 func cmdSearch(repoRoot string, args []string) int {
-	if len(args) == 0 { fmt.Fprintln(os.Stderr, "missing query"); return 1 }
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "missing query")
+		return 1
+	}
 	q := strings.ToLower(args[0])
 	idx := buildIndex(repoRoot)
 	for _, d := range idx {
@@ -423,18 +687,28 @@ func cmdStats(repoRoot string) int {
 	fmt.Printf("total\t%d\n", total)
 	byType := map[string]int{}
 	byStatus := map[string]int{}
-	for _, d := range idx { byType[d.Type]++; byStatus[d.Status]++ }
+	for _, d := range idx {
+		byType[d.Type]++
+		byStatus[d.Status]++
+	}
 	keys := sortedKeys(byType)
-	for _, k := range keys { fmt.Printf("type:%s\t%d\n", k, byType[k]) }
+	for _, k := range keys {
+		fmt.Printf("type:%s\t%d\n", k, byType[k])
+	}
 	keys = sortedKeys(byStatus)
-	for _, k := range keys { fmt.Printf("status:%s\t%d\n", k, byStatus[k]) }
+	for _, k := range keys {
+		fmt.Printf("status:%s\t%d\n", k, byStatus[k])
+	}
 	return 0
 }
 
 // --- project git operations ---
 
 func cmdProject(repoRoot string, args []string) int {
-	if len(args) == 0 { fmt.Fprintln(os.Stderr, "missing project subcommand"); return 1 }
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "missing project subcommand")
+		return 1
+	}
 	sub := args[0]
 	fs := flag.NewFlagSet("project", flag.ContinueOnError)
 	fs.SetOutput(newDiscard())
@@ -444,31 +718,72 @@ func cmdProject(repoRoot string, args []string) int {
 	fs.StringVar(&url, "url", "", "remote url")
 	fs.StringVar(&remote, "remote", "origin", "remote")
 	fs.StringVar(&branch, "branch", "", "branch")
-	if err := fs.Parse(args[1:]); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
-	if project == "" { fmt.Fprintln(os.Stderr, "--project is required"); return 1 }
+	if err := fs.Parse(args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	if project == "" {
+		fmt.Fprintln(os.Stderr, "--project is required")
+		return 1
+	}
 	worktree, err := resolveProjectGitWorktree(repoRoot, project)
-	if err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
 	switch sub {
 	case "add-remote":
-		if name == "" || url == "" { fmt.Fprintln(os.Stderr, "--name and --url are required"); return 1 }
-		if err := git(worktree, "remote", "add", name, url); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if name == "" || url == "" {
+			fmt.Fprintln(os.Stderr, "--name and --url are required")
+			return 1
+		}
+		if err := git(worktree, "remote", "add", name, url); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		fmt.Printf("%s\tremote-added\t%s\t%s\n", project, name, url)
 		return 0
 	case "fetch":
-		if err := git(worktree, "fetch", remote, "--prune"); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if err := git(worktree, "fetch", remote, "--prune"); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		fmt.Printf("%s\tfetched\t%s\n", project, remote)
 		return 0
 	case "push":
 		br := branch
-		if br == "" { var e error; br, e = currentBranch(worktree); if e != nil { fmt.Fprintln(os.Stderr, e.Error()); return 1 } }
-		if err := git(worktree, "push", "-u", remote, br); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if br == "" {
+			var e error
+			br, e = currentBranch(worktree)
+			if e != nil {
+				fmt.Fprintln(os.Stderr, e.Error())
+				return 1
+			}
+		}
+		if err := git(worktree, "push", "-u", remote, br); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		fmt.Printf("%s\tpushed\t%s\t%s\n", project, remote, br)
 		return 0
 	case "sync":
-		if err := git(worktree, "fetch", remote, "--prune"); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if err := git(worktree, "fetch", remote, "--prune"); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		br := branch
-		if br == "" { var e error; br, e = currentBranch(worktree); if e != nil { fmt.Fprintln(os.Stderr, e.Error()); return 1 } }
-		if err := git(worktree, "push", "-u", remote, br); err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+		if br == "" {
+			var e error
+			br, e = currentBranch(worktree)
+			if e != nil {
+				fmt.Fprintln(os.Stderr, e.Error())
+				return 1
+			}
+		}
+		if err := git(worktree, "push", "-u", remote, br); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
 		fmt.Printf("%s\tfetched\t%s\n", project, remote)
 		fmt.Printf("%s\tpushed\t%s\t%s\n", project, remote, br)
 		return 0
@@ -481,21 +796,21 @@ func cmdProject(repoRoot string, args []string) int {
 // --- support code (index, git, frontmatter) ---
 
 type Document struct {
-	Path     string
-	ID       string
-	Type     string
-	Title    string
-	Slug     string
-	Status   string
-	Date     string
-	Theme    []string
-	Project  []string
-	Tags     []string
-	Source   []string
-	Summary  string
-	Body     string
-	Created  string
-	Updated  string
+	Path    string
+	ID      string
+	Type    string
+	Title   string
+	Slug    string
+	Status  string
+	Date    string
+	Theme   []string
+	Project []string
+	Tags    []string
+	Source  []string
+	Summary string
+	Body    string
+	Created string
+	Updated string
 }
 
 func buildIndex(repoRoot string) []Document {
@@ -503,32 +818,39 @@ func buildIndex(repoRoot string) []Document {
 	var out []Document
 	for _, f := range files {
 		meta, body, err := parseFrontmatterFile(f)
-		if err != nil { continue }
+		if err != nil {
+			continue
+		}
 		d := Document{}
 		d.Path = relPath(repoRoot, f)
-		d.ID = asString(meta["id"]) 
-		d.Type = asString(meta["type"]) 
-		d.Title = asString(meta["title"]) 
-		d.Slug = asString(meta["slug"]) 
-		d.Status = asString(meta["status"]) 
-		d.Date = asString(meta["date"]) 
-		d.Theme = asStringList(meta["theme"]) 
-		d.Project = asStringList(meta["project"]) 
-		d.Tags = asStringList(meta["tags"]) 
-		d.Source = asStringList(meta["source"]) 
-		d.Summary = asString(meta["summary"]) 
+		d.ID = asString(meta["id"])
+		d.Type = asString(meta["type"])
+		d.Title = asString(meta["title"])
+		d.Slug = asString(meta["slug"])
+		d.Status = asString(meta["status"])
+		d.Date = asString(meta["date"])
+		d.Theme = asStringList(meta["theme"])
+		d.Project = asStringList(meta["project"])
+		d.Tags = asStringList(meta["tags"])
+		d.Source = asStringList(meta["source"])
+		d.Summary = asString(meta["summary"])
 		d.Body = strings.TrimSpace(body)
-		d.Created = asString(meta["created_at"]) 
-		d.Updated = asString(meta["updated_at"]) 
+		d.Created = asString(meta["created_at"])
+		d.Updated = asString(meta["updated_at"])
 		out = append(out, d)
 	}
 	// stable order by path
 	keys := make([]string, 0, len(out))
 	m := map[string]Document{}
-	for _, d := range out { keys = append(keys, d.Path); m[d.Path] = d }
+	for _, d := range out {
+		keys = append(keys, d.Path)
+		m[d.Path] = d
+	}
 	keys = sortStrings(keys)
 	res := make([]Document, 0, len(out))
-	for _, k := range keys { res = append(res, m[k]) }
+	for _, k := range keys {
+		res = append(res, m[k])
+	}
 	return res
 }
 
@@ -538,9 +860,15 @@ func collectDocuments(repoRoot string) []string {
 	for _, r := range roots {
 		root := filepath.Join(repoRoot, r)
 		_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-			if err != nil { return nil }
-			if d.IsDir() { return nil }
-			if strings.HasSuffix(d.Name(), ".md") { files = append(files, path) }
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if strings.HasSuffix(d.Name(), ".md") {
+				files = append(files, path)
+			}
 			return nil
 		})
 	}
@@ -552,53 +880,88 @@ func validateAll(repoRoot string, files []string) []string {
 	ids := map[string][]string{}
 	for _, f := range files {
 		rel := relPath(repoRoot, f)
-		meta, _ , err := parseFrontmatterFile(f)
-		if err != nil { errs = append(errs, fmt.Sprintf("%s: %v", rel, err)); continue }
-		for _, k := range []string{"id","type","title","slug","created_at","updated_at","status"} {
-			if s := asString(meta[k]); s == "" { errs = append(errs, fmt.Sprintf("%s: missing required field: %s", rel, k)) }
+		meta, _, err := parseFrontmatterFile(f)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", rel, err))
+			continue
+		}
+		for _, k := range []string{"id", "type", "title", "slug", "created_at", "updated_at", "status"} {
+			if s := asString(meta[k]); s == "" {
+				errs = append(errs, fmt.Sprintf("%s: missing required field: %s", rel, k))
+			}
 		}
 		dt := asString(meta["type"])
-		if dt == "" || !inSet(dt, []string{"daily","note","decision","review","project"}) {
-			errs = append(errs, fmt.Sprintf("%s: unsupported type: %s", rel, dt));
+		if dt == "" || !inSet(dt, []string{"daily", "note", "decision", "review", "project"}) {
+			errs = append(errs, fmt.Sprintf("%s: unsupported type: %s", rel, dt))
 			continue
 		}
 		st := asString(meta["status"])
-		if st != "" && !inSet(st, []string{"inbox","active","evergreen","archived"}) {
+		if st != "" && !inSet(st, []string{"inbox", "active", "evergreen", "archived"}) {
 			errs = append(errs, fmt.Sprintf("%s: unsupported status: %s", rel, st))
 		}
 		slug := asString(meta["slug"])
-		if slug != "" && !validSlug(slug) { errs = append(errs, fmt.Sprintf("%s: invalid slug: %s", rel, slug)) }
+		if slug != "" && !validSlug(slug) {
+			errs = append(errs, fmt.Sprintf("%s: invalid slug: %s", rel, slug))
+		}
 		if dt == "daily" {
 			dateVal := asString(meta["date"])
-			if dateVal == "" { errs = append(errs, fmt.Sprintf("%s: missing required field: date", rel)) } else {
+			if dateVal == "" {
+				errs = append(errs, fmt.Sprintf("%s: missing required field: date", rel))
+			} else {
 				exp := filepath.ToSlash(filepath.Join("dailies", dateVal[:4], dateVal[5:7], dateVal[8:10]+".md"))
-				if rel != exp { errs = append(errs, fmt.Sprintf("%s: invalid daily path", rel)) }
-				if slug != dateVal { errs = append(errs, fmt.Sprintf("%s: daily slug must match date", rel)) }
+				if rel != exp {
+					errs = append(errs, fmt.Sprintf("%s: invalid daily path", rel))
+				}
+				if slug != dateVal {
+					errs = append(errs, fmt.Sprintf("%s: daily slug must match date", rel))
+				}
 			}
 		} else {
 			if dt == "project" {
 				exp := filepath.ToSlash(filepath.Join("projects", slug, "README.md"))
-				if rel != exp { errs = append(errs, fmt.Sprintf("%s: invalid path for type: %s", rel, dt)) }
-				gw := asString(meta["git_worktree"]) 
+				if rel != exp {
+					errs = append(errs, fmt.Sprintf("%s: invalid path for type: %s", rel, dt))
+				}
+				gw := asString(meta["git_worktree"])
 				if gw != "" {
 					abs := mustAbs(gw)
 					st, e := os.Stat(abs)
-					if e != nil || !st.IsDir() { errs = append(errs, fmt.Sprintf("%s: git_worktree path does not exist", rel)) } else if ok, _ := isGitWorktree(abs); !ok { errs = append(errs, fmt.Sprintf("%s: git_worktree is not a git working tree", rel)) }
+					if e != nil || !st.IsDir() {
+						errs = append(errs, fmt.Sprintf("%s: git_worktree path does not exist", rel))
+					} else if ok, _ := isGitWorktree(abs); !ok {
+						errs = append(errs, fmt.Sprintf("%s: git_worktree is not a git working tree", rel))
+					}
 				}
 			} else {
 				// note/decision/review
 				var prefix string
-				if dt == "note" { prefix = "notes/" } else if dt == "decision" { prefix = "decisions/" } else if dt == "review" { prefix = "reviews/" }
+				if dt == "note" {
+					prefix = "notes/"
+				} else if dt == "decision" {
+					prefix = "decisions/"
+				} else if dt == "review" {
+					prefix = "reviews/"
+				}
 				if prefix != "" {
-					if !strings.HasPrefix(rel, prefix) { errs = append(errs, fmt.Sprintf("%s: invalid path for type: %s", rel, dt)) }
-					if filepath.Base(rel) != slug+".md" { errs = append(errs, fmt.Sprintf("%s: slug does not match file name", rel)) }
+					if !strings.HasPrefix(rel, prefix) {
+						errs = append(errs, fmt.Sprintf("%s: invalid path for type: %s", rel, dt))
+					}
+					if filepath.Base(rel) != slug+".md" {
+						errs = append(errs, fmt.Sprintf("%s: slug does not match file name", rel))
+					}
 				}
 			}
 		}
-		if id := asString(meta["id"]); id != "" { ids[id] = append(ids[id], rel) }
+		if id := asString(meta["id"]); id != "" {
+			ids[id] = append(ids[id], rel)
+		}
 	}
 	// duplicates
-	for id, paths := range ids { if len(paths) > 1 { errs = append(errs, fmt.Sprintf("duplicate id: %s -> %s", id, strings.Join(paths, ", "))) } }
+	for id, paths := range ids {
+		if len(paths) > 1 {
+			errs = append(errs, fmt.Sprintf("duplicate id: %s -> %s", id, strings.Join(paths, ", ")))
+		}
+	}
 	return errs
 }
 
@@ -608,14 +971,20 @@ func validSlug(s string) bool { return regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9
 
 func parseFrontmatterFile(p string) (map[string]any, string, error) {
 	b, err := os.ReadFile(p)
-	if err != nil { return nil, "", err }
+	if err != nil {
+		return nil, "", err
+	}
 	return parseFrontmatter(string(b))
 }
 
 func parseFrontmatter(text string) (map[string]any, string, error) {
-	if !strings.HasPrefix(text, "---\n") { return nil, "", errors.New("missing frontmatter") }
+	if !strings.HasPrefix(text, "---\n") {
+		return nil, "", errors.New("missing frontmatter")
+	}
 	end := strings.Index(text[4:], "\n---\n")
-	if end == -1 { return nil, "", errors.New("unterminated frontmatter") }
+	if end == -1 {
+		return nil, "", errors.New("unterminated frontmatter")
+	}
 	end += 4
 	block := text[4:end]
 	body := text[end+5:]
@@ -623,9 +992,13 @@ func parseFrontmatter(text string) (map[string]any, string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(block))
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.TrimSpace(line) == "" { continue }
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
 		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 { return nil, "", fmt.Errorf("invalid frontmatter line: %s", line) }
+		if len(parts) != 2 {
+			return nil, "", fmt.Errorf("invalid frontmatter line: %s", line)
+		}
 		key := strings.TrimSpace(parts[0])
 		val := strings.TrimSpace(parts[1])
 		data[key] = parseFrontValue(val)
@@ -634,8 +1007,14 @@ func parseFrontmatter(text string) (map[string]any, string, error) {
 }
 
 func parseFrontValue(v string) any {
-	if strings.HasPrefix(v, "[") && strings.HasSuffix(v, "]") { var arr []any; _ = jsonUnmarshal([]byte(v), &arr); return arr }
-	if v == "\"\"" { return "" }
+	if strings.HasPrefix(v, "[") && strings.HasSuffix(v, "]") {
+		var arr []any
+		_ = jsonUnmarshal([]byte(v), &arr)
+		return arr
+	}
+	if v == "\"\"" {
+		return ""
+	}
 	return v
 }
 
@@ -649,30 +1028,50 @@ func isGitWorktree(path string) (bool, error) {
 func resolveGitWorktree(p string) (string, error) {
 	abs := mustAbs(p)
 	st, err := os.Stat(abs)
-	if err != nil || !st.IsDir() { return "", fmt.Errorf("Git worktree path does not exist: %s", abs) }
+	if err != nil || !st.IsDir() {
+		return "", fmt.Errorf("Git worktree path does not exist: %s", abs)
+	}
 	ok, _ := isGitWorktree(abs)
-	if !ok { return "", fmt.Errorf("Git worktree path is not a git working tree: %s", abs) }
+	if !ok {
+		return "", fmt.Errorf("Git worktree path is not a git working tree: %s", abs)
+	}
 	return abs, nil
 }
 
 func resolveProjectGitWorktree(repoRoot, slug string) (string, error) {
 	p := filepath.Join(repoRoot, "projects", slug, "README.md")
 	b, err := os.ReadFile(p)
-	if err != nil { return "", fmt.Errorf("Project document does not exist: %s", p) }
+	if err != nil {
+		return "", fmt.Errorf("Project document does not exist: %s", p)
+	}
 	meta, _, err := parseFrontmatter(string(b))
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 	gw := asString(meta["git_worktree"])
-	if strings.TrimSpace(gw) == "" { return "", fmt.Errorf("Project document is missing git_worktree: %s", p) }
+	if strings.TrimSpace(gw) == "" {
+		return "", fmt.Errorf("Project document is missing git_worktree: %s", p)
+	}
 	return resolveGitWorktree(gw)
 }
 
-func git(cwd string, args ...string) error { _, code, err := runCmd(cwd, "git", args...); if code != 0 { return err }; return nil }
+func git(cwd string, args ...string) error {
+	_, code, err := runCmd(cwd, "git", args...)
+	if code != 0 {
+		return err
+	}
+	return nil
+}
 
 func currentBranch(cwd string) (string, error) {
 	out, code, err := runCmd(cwd, "git", "branch", "--show-current")
-	if code != 0 { return "", err }
+	if code != 0 {
+		return "", err
+	}
 	br := strings.TrimSpace(out)
-	if br == "" { return "", fmt.Errorf("Git worktree is not on a branch: %s", cwd) }
+	if br == "" {
+		return "", fmt.Errorf("Git worktree is not on a branch: %s", cwd)
+	}
 	return br, nil
 }
 
@@ -680,9 +1079,13 @@ func runCmd(cwd, name string, args ...string) (string, int, error) {
 	cmd := execCommand(name, args...)
 	cmd.Dir = cwd
 	b, err := cmd.CombinedOutput()
-	if err == nil { return string(b), 0, nil }
+	if err == nil {
+		return string(b), 0, nil
+	}
 	// exit code
-	if ee, ok := err.(*exec.ExitError); ok { return string(b), ee.ExitCode(), fmt.Errorf(strings.TrimSpace(string(b))) }
+	if ee, ok := err.(*exec.ExitError); ok {
+		return string(b), ee.ExitCode(), fmt.Errorf(strings.TrimSpace(string(b)))
+	}
 	return string(b), 1, err
 }
 
@@ -694,7 +1097,17 @@ type discard struct{}
 
 func (*discard) Write(p []byte) (int, error) { return len(p), nil }
 
-func asString(v any) string { if v == nil { return "" }; switch t := v.(type) {case string: return t; default: return fmt.Sprint(t)} }
+func asString(v any) string {
+	if v == nil {
+		return ""
+	}
+	switch t := v.(type) {
+	case string:
+		return t
+	default:
+		return fmt.Sprint(t)
+	}
+}
 
 func asStringList(v any) []string {
 	switch t := v.(type) {
@@ -702,37 +1115,54 @@ func asStringList(v any) []string {
 		return []string{}
 	case []any:
 		res := make([]string, 0, len(t))
-		for _, e := range t { res = append(res, asString(e)) }
+		for _, e := range t {
+			res = append(res, asString(e))
+		}
 		return res
 	case string:
-		if t == "" { return []string{} }
+		if t == "" {
+			return []string{}
+		}
 		return []string{t}
 	default:
 		return []string{asString(t)}
 	}
 }
 
-func sortedKeys(m map[string]int) []string { keys := make([]string,0,len(m)); for k := range m { keys = append(keys,k) }; return sortStrings(keys) }
+func sortedKeys(m map[string]int) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return sortStrings(keys)
+}
 
 func sortStrings(in []string) []string { s := append([]string(nil), in...); sort.Strings(s); return s }
 
-func inSet(s string, set []string) bool { for _, v := range set { if v == s { return true } }; return false }
+func inSet(s string, set []string) bool {
+	for _, v := range set {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
 
 func mustAbs(p string) string { a, _ := filepath.Abs(os.ExpandEnv(expandUser(p))); return a }
 
 func expandUser(s string) string {
-    if strings.HasPrefix(s, "~") {
-        if home, err := os.UserHomeDir(); err == nil {
-            return filepath.Join(home, strings.TrimPrefix(s, "~"))
-        }
-    }
-    return s
+	if strings.HasPrefix(s, "~") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, strings.TrimPrefix(s, "~"))
+		}
+	}
+	return s
 }
 
 // indirections for testability
 var (
 	jsonUnmarshal = func(b []byte, v any) error { return json.Unmarshal(b, v) }
-	execCommand  = func(name string, args ...string) *exec.Cmd { return exec.Command(name, args...) }
+	execCommand   = func(name string, args ...string) *exec.Cmd { return exec.Command(name, args...) }
 )
 
 // simple uuid v4 (stdlib only): format based on random bytes

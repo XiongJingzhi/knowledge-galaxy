@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import os
+import stat
 import subprocess
 import tempfile
 from pathlib import Path
+
+DEFAULT_REPO_DIRNAME = ".knowledge-galax"
 
 
 NOTE_TEMPLATE = """---
@@ -195,3 +199,21 @@ class TemporaryRepo:
 
     def cleanup(self) -> None:
         self._temp_dir.cleanup()
+
+
+def default_repo_path(home: Path) -> Path:
+    return home / DEFAULT_REPO_DIRNAME
+
+
+def install_fake_clipboard_tools(bin_dir: Path, text: str) -> None:
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    scripts = {
+        "pbpaste": f"#!/bin/sh\nprintf '%s' '{text}'\n",
+        "wl-paste": f"#!/bin/sh\nprintf '%s' '{text}'\n",
+        "xclip": f"#!/bin/sh\nprintf '%s' '{text}'\n",
+        "powershell": f"#!/bin/sh\nprintf '%s' '{text}'\n",
+    }
+    for name, content in scripts.items():
+        path = bin_dir / name
+        path.write_text(content, encoding="utf-8")
+        path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
