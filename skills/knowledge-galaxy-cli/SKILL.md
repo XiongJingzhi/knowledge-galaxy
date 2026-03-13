@@ -159,6 +159,14 @@ python3 -m implementations.python.kg --repo /path/to/content-repo search idea
 python3 -m implementations.python.kg --repo /path/to/content-repo stats
 ```
 
+### 导出当前快照
+
+```bash
+python3 -m implementations.python.kg --repo /path/to/content-repo export document-list
+python3 -m implementations.python.kg --repo /path/to/content-repo export manifest
+python3 -m implementations.python.kg --repo /path/to/content-repo export change-list
+```
+
 ### 管理项目远端
 
 ```bash
@@ -175,6 +183,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo project sync -
 - `list` 输出以 tab 分隔的 `type`、`title`、`path`
 - `search` 输出与 `list` 相同格式的匹配结果
 - `stats` 先输出 `total`，再输出分组统计
+- `export ...` 输出 JSON 快照
 - `project ...` 输出以 tab 分隔的项目操作结果
 
 ## 常见误用

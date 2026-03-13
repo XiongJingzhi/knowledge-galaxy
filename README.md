@@ -56,6 +56,9 @@ README.md
 - `list`
 - `search`
 - `stats`
+- `export document-list`
+- `export manifest`
+- `export change-list`
 - `project add-remote`
 - `project fetch`
 - `project push`
@@ -64,7 +67,6 @@ README.md
 当前仍属于计划中、尚未实现的能力：
 
 - 资源导入工作流
-- 导出 document list / change list / manifest
 
 ## 默认知识仓库
 
@@ -183,6 +185,9 @@ python3 -m implementations.python.kg --repo /path/to/content-repo validate
 python3 -m implementations.python.kg --repo /path/to/content-repo list
 python3 -m implementations.python.kg --repo /path/to/content-repo search idea
 python3 -m implementations.python.kg --repo /path/to/content-repo stats
+python3 -m implementations.python.kg --repo /path/to/content-repo export document-list
+python3 -m implementations.python.kg --repo /path/to/content-repo export manifest
+python3 -m implementations.python.kg --repo /path/to/content-repo export change-list
 ```
 
 `validate` 当前会检查：
@@ -192,6 +197,12 @@ python3 -m implementations.python.kg --repo /path/to/content-repo stats
 - 重复 ID
 - project 的 `git_worktree`
 - Markdown 正文中指向 `assets/` 与 `references/` 的相对链接是否存在
+
+`export` 当前会输出 JSON：
+
+- `document-list`：按路径排序的当前文档快照
+- `manifest`：带 `generated_at` 与 `total` 的整体快照
+- `change-list`：按 `updated_at` 倒序排列的当前变更视图
 
 ### 项目远端操作
 

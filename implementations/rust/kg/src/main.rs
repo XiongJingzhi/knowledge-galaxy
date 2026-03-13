@@ -218,6 +218,7 @@ fn run(argv: Vec<String>) -> i32 {
         "list" => cmd_list(&repo_root, &args[command_index + 1..]),
         "search" => cmd_search(&repo_root, &args[command_index + 1..]),
         "stats" => cmd_stats(&repo_root),
+        "export" => cmd_export(&repo_root, &args[command_index + 1..]),
         "project" => cmd_project(&repo_root, &args[command_index + 1..]),
         "--help" | "-h" => {
             println!("usage:");
@@ -949,6 +950,116 @@ fn cmd_stats(repo_root: &Path) -> i32 {
         println!("status:{}\t{}", k, v);
     }
     0
+}
+
+fn cmd_export(repo_root: &Path, args: &[String]) -> i32 {
+    if args.is_empty() {
+        eprintln!("missing export type");
+        return 1;
+    }
+    let idx = build_index(repo_root);
+    match args[0].as_str() {
+        "document-list" => {
+            println!("{}", export_document_list_json(&idx));
+            0
+        }
+        "manifest" => {
+            println!("{}", export_manifest_json(&idx));
+            0
+        }
+        "change-list" => {
+            println!("{}", export_change_list_json(&idx));
+            0
+        }
+        _ => {
+            eprintln!("Unsupported export type");
+            1
+        }
+    }
+}
+
+fn export_document_list_json(idx: &[Document]) -> String {
+    let mut docs = idx.to_vec();
+    docs.sort_by(|a, b| a.path.cmp(&b.path));
+    let items = docs
+        .iter()
+        .map(|d| {
+            json_object(&[
+                ("path", json_string(&d.path)),
+                ("id", json_string(&d.id)),
+                ("type", json_string(&d.type_)),
+                ("title", json_string(&d.title)),
+                ("status", json_string(&d.status)),
+                ("created_at", json_string(&d.created)),
+                ("updated_at", json_string(&d.updated)),
+            ])
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+    format!("[\n{}\n]", indent_lines(&items, 2))
+}
+
+fn export_manifest_json(idx: &[Document]) -> String {
+    let documents = export_document_list_json(idx);
+    json_object(&[
+        ("generated_at", json_string(&timestamp_utc_rfc3339())),
+        ("total", idx.len().to_string()),
+        ("documents", documents),
+    ])
+}
+
+fn export_change_list_json(idx: &[Document]) -> String {
+    let mut docs = idx.to_vec();
+    docs.sort_by(|a, b| b.updated.cmp(&a.updated).then_with(|| a.path.cmp(&b.path)));
+    let items = docs
+        .iter()
+        .map(|d| {
+            json_object(&[
+                ("path", json_string(&d.path)),
+                ("id", json_string(&d.id)),
+                ("type", json_string(&d.type_)),
+                ("title", json_string(&d.title)),
+                ("status", json_string(&d.status)),
+                ("updated_at", json_string(&d.updated)),
+            ])
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+    format!("[\n{}\n]", indent_lines(&items, 2))
+}
+
+fn json_object(fields: &[(&str, String)]) -> String {
+    let body = fields
+        .iter()
+        .map(|(key, value)| format!("{}: {}", json_string(key), value))
+        .collect::<Vec<_>>()
+        .join(",\n");
+    format!("{{\n{}\n}}", indent_lines(&body, 2))
+}
+
+fn indent_lines(text: &str, spaces: usize) -> String {
+    let indent = " ".repeat(spaces);
+    text.lines()
+        .map(|line| format!("{}{}", indent, line))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn json_string(value: &str) -> String {
+    let mut out = String::from("\"");
+    for ch in value.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c.is_control() => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 fn collect_documents(repo_root: &Path) -> Vec<PathBuf> {

@@ -1,5 +1,6 @@
 import argparse
 from datetime import date, datetime, UTC
+import json
 from pathlib import Path
 import sqlite3
 import sys
@@ -107,6 +108,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("stats")
     subparsers.add_parser("validate")
+
+    export_parser = subparsers.add_parser("export")
+    export_subparsers = export_parser.add_subparsers(dest="export_type")
+    export_subparsers.required = True
+    export_subparsers.add_parser("document-list")
+    export_subparsers.add_parser("manifest")
+    export_subparsers.add_parser("change-list")
 
     return parser
 
@@ -336,7 +344,7 @@ def run(args: argparse.Namespace) -> int:
             raise CommandError("Unsupported project command")
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             raise CommandError(str(exc)) from exc
-    if args.command in {"list", "search", "stats"}:
+    if args.command in {"list", "search", "stats", "export"}:
         repo_root = resolve_repo_root(args.repo)
         index_path = rebuild_index(repo_root)
         with sqlite3.connect(index_path) as connection:
@@ -344,6 +352,8 @@ def run(args: argparse.Namespace) -> int:
                 return run_list(connection, args)
             if args.command == "search":
                 return run_search(connection, args.query)
+            if args.command == "export":
+                return run_export(connection, args.export_type)
             return run_stats(connection)
     return 0
 
@@ -390,6 +400,67 @@ def run_stats(connection: sqlite3.Connection) -> int:
     ):
         print(f"status:{status}\t{count}")
     return 0
+
+
+def run_export(connection: sqlite3.Connection, export_type: str) -> int:
+    if export_type == "document-list":
+        payload = export_document_list(connection)
+    elif export_type == "manifest":
+        documents = export_document_list(connection)
+        payload = {
+            "generated_at": utc_timestamp(),
+            "total": len(documents),
+            "documents": documents,
+        }
+    elif export_type == "change-list":
+        payload = export_change_list(connection)
+    else:
+        raise CommandError("Unsupported export type")
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+def export_document_list(connection: sqlite3.Connection) -> list[dict[str, str]]:
+    rows = connection.execute(
+        """
+        SELECT path, id, type, title, status, created_at, updated_at
+        FROM documents
+        ORDER BY path
+        """
+    )
+    return [
+        {
+            "path": row[0],
+            "id": row[1],
+            "type": row[2],
+            "title": row[3],
+            "status": row[4],
+            "created_at": row[5],
+            "updated_at": row[6],
+        }
+        for row in rows
+    ]
+
+
+def export_change_list(connection: sqlite3.Connection) -> list[dict[str, str]]:
+    rows = connection.execute(
+        """
+        SELECT path, id, type, title, status, updated_at
+        FROM documents
+        ORDER BY updated_at DESC, path ASC
+        """
+    )
+    return [
+        {
+            "path": row[0],
+            "id": row[1],
+            "type": row[2],
+            "title": row[3],
+            "status": row[4],
+            "updated_at": row[5],
+        }
+        for row in rows
+    ]
 
 
 def normalize_argv(argv: Sequence[str] | None) -> list[str] | None:

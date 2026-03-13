@@ -238,11 +238,15 @@ CLI 可执行名为 `kg`。
 - `list`
 - `search`
 - `stats`
+- `export document-list`
+- `export manifest`
+- `export change-list`
 - `project add-remote`
 - `project fetch`
 - `project push`
 - `project sync`
 - `validate` 中的 `reference` / `asset` 相对链接存在性检查
+- `export` 中的 JSON 快照导出
 
 ### 8.2 默认仓库行为
 
@@ -260,13 +264,13 @@ CLI 可执行名为 `kg`。
 - 成功时输出尽量短且可脚本化
 - 创建类命令输出相对于仓库根目录的目标路径
 - 失败时在 stderr 输出单行错误，并以非零状态码退出
+- `export` 输出 JSON，其中 `document-list` 返回路径排序结果，`manifest` 返回整体快照，`change-list` 返回按 `updated_at` 倒序排列的当前变更视图
 
 ### 8.4 当前仍未实现
 
 以下能力仍在 1.0 计划中，但截至 2026-03-13 尚未落地：
 
 - 资源导入命令
-- 导出 document list / change list / manifest
 
 ## 9. 文档与实现对齐原则
 

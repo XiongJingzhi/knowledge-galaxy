@@ -225,6 +225,8 @@ func run(argv []string) int {
 		return cmdSearch(repoRoot, rest[1:])
 	case "stats":
 		return cmdStats(repoRoot)
+	case "export":
+		return cmdExport(repoRoot, rest[1:])
 	case "project":
 		return cmdProject(repoRoot, rest[1:])
 	case "--help", "-h":
@@ -700,6 +702,85 @@ func cmdStats(repoRoot string) int {
 		fmt.Printf("status:%s\t%d\n", k, byStatus[k])
 	}
 	return 0
+}
+
+func cmdExport(repoRoot string, args []string) int {
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "missing export type")
+		return 1
+	}
+	switch args[0] {
+	case "document-list":
+		payload, err := json.MarshalIndent(exportDocumentList(buildIndex(repoRoot)), "", "  ")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
+		fmt.Println(string(payload))
+		return 0
+	case "manifest":
+		docs := exportDocumentList(buildIndex(repoRoot))
+		payload, err := json.MarshalIndent(map[string]any{
+			"generated_at": strings.ReplaceAll(time.Now().UTC().Format(time.RFC3339), "+00:00", "Z"),
+			"total":        len(docs),
+			"documents":    docs,
+		}, "", "  ")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
+		fmt.Println(string(payload))
+		return 0
+	case "change-list":
+		payload, err := json.MarshalIndent(exportChangeList(buildIndex(repoRoot)), "", "  ")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
+		fmt.Println(string(payload))
+		return 0
+	default:
+		fmt.Fprintln(os.Stderr, "Unsupported export type")
+		return 1
+	}
+}
+
+func exportDocumentList(idx []Document) []map[string]string {
+	sort.Slice(idx, func(i, j int) bool { return idx[i].Path < idx[j].Path })
+	out := make([]map[string]string, 0, len(idx))
+	for _, d := range idx {
+		out = append(out, map[string]string{
+			"path":       d.Path,
+			"id":         d.ID,
+			"type":       d.Type,
+			"title":      d.Title,
+			"status":     d.Status,
+			"created_at": d.Created,
+			"updated_at": d.Updated,
+		})
+	}
+	return out
+}
+
+func exportChangeList(idx []Document) []map[string]string {
+	sort.Slice(idx, func(i, j int) bool {
+		if idx[i].Updated == idx[j].Updated {
+			return idx[i].Path < idx[j].Path
+		}
+		return idx[i].Updated > idx[j].Updated
+	})
+	out := make([]map[string]string, 0, len(idx))
+	for _, d := range idx {
+		out = append(out, map[string]string{
+			"path":       d.Path,
+			"id":         d.ID,
+			"type":       d.Type,
+			"title":      d.Title,
+			"status":     d.Status,
+			"updated_at": d.Updated,
+		})
+	}
+	return out
 }
 
 // --- project git operations ---

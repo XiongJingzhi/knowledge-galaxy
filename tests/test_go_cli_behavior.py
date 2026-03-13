@@ -1,4 +1,5 @@
 import os
+import json
 import subprocess
 import unittest
 
@@ -96,3 +97,32 @@ summary: ""
         self.assertEqual(result.returncode, 1)
         self.assertIn("missing asset path", result.stdout)
         self.assertIn("missing reference path", result.stdout)
+
+    def test_export_manifest_returns_json(self) -> None:
+        self.repo_root.mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes" / "go-note.md").write_text(
+            """---
+id: note-1
+type: note
+title: Go Note
+slug: go-note
+created_at: 2026-03-11T00:00:00Z
+updated_at: 2026-03-11T00:00:00Z
+status: inbox
+theme: []
+project: []
+tags: []
+summary: ""
+---
+
+Body
+""",
+            encoding="utf-8",
+        )
+
+        result = self.run_go(["export", "manifest"])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["documents"][0]["path"], "notes/go-note.md")

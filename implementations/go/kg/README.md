@@ -61,6 +61,7 @@ make test-go
 - `append` 和 `import` 下的捕获命令
 - 仓库校验（包括 `assets/` / `references/` 相对链接存在性检查）
 - 仓库的列表、搜索和统计
+- JSON 导出：`document-list` / `manifest` / `change-list`
 - `project` 下的项目 git 操作
 
 如果没有传入 `--repo`，CLI 会默认使用 `~/.knowledge-galax`，并在需要时自动创建基础仓库结构。
@@ -95,6 +96,7 @@ printf 'Captured for today\n' | ./kg append daily
 ./kg --repo /path/to/content-repo list
 ./kg --repo /path/to/content-repo search idea
 ./kg --repo /path/to/content-repo stats
+./kg --repo /path/to/content-repo export manifest
 ```
 
 操作项目仓库：
