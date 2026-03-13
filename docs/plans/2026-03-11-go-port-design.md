@@ -1,6 +1,9 @@
 # Knowledge Galaxy Go Port Design
 
-> Historical note: this design reflects the repository layout before 2026-03-11. The current Go implementation root is `implementations/go/kg`.
+> 历史文档状态：本文记录 2026-03-11 的 Go 迁移设计，不直接代表当前仓库状态。
+> 当前权威文档：`README.md`、`docs/specs/repository-layout.md`、`implementations/go/kg/README.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 文中出现的 `scripts/kg`、仓库根 `cmd/kg`、`internal/*` 等布局说明应视为历史迁移背景。当前 Go 实现根目录是 `implementations/go/kg`。
 
 Date: 2026-03-11
 

@@ -1,5 +1,10 @@
 # Knowledge Galaxy Docs And Skeleton Implementation Plan
 
+> 历史文档状态：本文记录 2026-03-10 的实施计划，不直接代表当前仓库状态。
+> 当前权威文档：`README.md`、`docs/specs/repository-layout.md`、`docs/specs/knowledge-galaxy-1.0-spec.md`、`docs/tasks/knowledge-galaxy-1.0-tasks.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 如果正文提到旧路径、旧命令或未完成实现，请优先以当前权威文档为准。
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Produce the initial Knowledge Galaxy 1.0 requirements, spec, task documents, and repository skeleton.

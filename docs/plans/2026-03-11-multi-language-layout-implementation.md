@@ -1,5 +1,10 @@
 # Multi-Language Layout Implementation Plan
 
+> 历史文档状态：本文记录 2026-03-11 的多语言布局实施计划。
+> 当前权威文档：`README.md`、`docs/specs/repository-layout.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 文中出现的迁移步骤、旧路径和 `mv` 命令属于历史实施记录，不代表当前仓库操作方式。
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Reorganize the repository into a language-first source layout while keeping the Python, Go, and Rust `kg` implementations working through stable repository-level entry points.

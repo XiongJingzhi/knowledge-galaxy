@@ -1,6 +1,9 @@
 # Knowledge Galaxy CLI MVP Design
 
-> Historical note: this document reflects the repository layout before 2026-03-11. Current implementation paths live under `implementations/python/kg`, `implementations/go/kg`, and `implementations/rust/kg`.
+> 历史文档状态：本文记录 2026-03-11 的 CLI MVP 设计，不直接代表当前仓库状态。
+> 当前权威文档：`README.md`、`docs/specs/repository-layout.md`、`docs/specs/knowledge-galaxy-1.0-spec.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 文中提到的 `scripts/kg` 等路径属于历史布局，当前实现路径请以上述目录为准。
 
 **Date:** 2026-03-11
 

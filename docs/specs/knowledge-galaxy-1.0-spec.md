@@ -2,9 +2,13 @@
 
 ## 1. Scope
 
-This specification defines the repository structure, document rules, metadata schema, and 1.0 operational boundary for Knowledge Galaxy.
+This specification defines the managed content-repository structure, document rules, metadata schema, and 1.0 operational boundary for Knowledge Galaxy.
 
 Knowledge Galaxy 1.0 is a storage-first system. Markdown files in Git are the source of truth. Query and AI usage are downstream concerns built on top of this storage model.
+
+This specification describes the target knowledge repository that `kg` manages. The source layout of this tooling repository is documented separately in `docs/specs/repository-layout.md`.
+
+本文描述的是 `kg` 管理的目标知识仓库，不是工具仓库自身的源码布局。当前工具仓库结构请参考 `docs/specs/repository-layout.md`。
 
 ## 2. Repository Layout
 
@@ -232,6 +236,16 @@ The 1.0 template layer does not require a template engine.
 
 The CLI executable name is `kg`.
 
+Current implementation status on 2026-03-13:
+
+- implemented now: create `daily` / `note` / `decision` / `review` / `project`, append to daily, create note from `stdin`, import from clipboard, `list`, `search`, `stats`, frontmatter/path/id validation, and project remote operations
+- still planned: asset import, export document list/change list/manifest, and reference/asset validation
+
+当前实现状态（2026-03-13）：
+
+- 已实现：`create daily/note/decision/review/project`、`append daily`、`create note from stdin`、`import from clipboard`、`list`、`search`、`stats`、frontmatter/path/id 校验、项目远端操作
+- 仍在计划中：asset import、导出 document list/change list/manifest、reference/asset 校验
+
 The 1.0 command surface should cover:
 
 - create `daily`
@@ -249,6 +263,10 @@ The 1.0 command surface should cover:
 - export document list, change list, and manifest
 
 CLI output should be short, parseable, and suitable for scripting.
+
+When `--repo` is omitted, the current implementations default to `~/.knowledge-galax`.
+
+当省略 `--repo` 时，当前实现会默认使用 `~/.knowledge-galax`。
 
 ## 9. Non-Goals
 

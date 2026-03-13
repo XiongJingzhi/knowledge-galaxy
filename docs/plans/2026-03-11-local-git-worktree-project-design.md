@@ -1,5 +1,10 @@
 # Local Git Worktree Project Support Design
 
+> 历史文档状态：本文记录 2026-03-11 的项目工作树设计阶段，不直接代表当前仓库状态。
+> 当前权威文档：`README.md`、`docs/specs/knowledge-galaxy-1.0-spec.md`、`docs/tasks/knowledge-galaxy-1.0-tasks.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 如果正文与当前 `project` 命令行为不一致，请以当前代码和 README 为准。
+
 **Date:** 2026-03-11
 
 ## Goal

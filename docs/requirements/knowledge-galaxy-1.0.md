@@ -165,6 +165,16 @@ The CLI should support:
 - structure validation
 - index export
 
+Current implementation note on 2026-03-13:
+
+- implemented now: document creation, content capture, query, and core validation
+- not implemented yet: asset import, export workflows, and reference/asset validation
+
+当前实现状态说明（2026-03-13）：
+
+- 已实现：文档创建、内容捕获、查询、核心校验
+- 尚未实现：资源导入、导出工作流、reference/asset 校验
+
 GUI is only a visualization layer over CLI capabilities.
 
 ### 4.4 Stable Structure
@@ -477,6 +487,18 @@ Export:
 - document list
 - change list
 - manifest
+
+Current runtime behavior:
+
+- If `--repo` is omitted, the CLI defaults to `~/.knowledge-galax`.
+- Python, Go, and Rust all implement the same current create/capture/query/validation/project surface.
+- Asset-management and export commands remain planned rather than implemented.
+
+当前运行行为：
+
+- 如果省略 `--repo`，CLI 默认使用 `~/.knowledge-galax`
+- Python、Go、Rust 三种实现当前都覆盖同一组 create/capture/query/validation/project 命令面
+- 资源管理和导出命令仍处于计划中，尚未实现
 
 ## 11. Knowledge Lifecycle
 

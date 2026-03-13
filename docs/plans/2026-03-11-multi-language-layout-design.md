@@ -1,5 +1,10 @@
 # Multi-Language Layout Design
 
+> 历史文档状态：本文记录 2026-03-11 的多语言布局重构设计。
+> 当前权威文档：`README.md`、`docs/specs/repository-layout.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 文中出现的 `scripts/kg`、`packages/rust`、仓库根 `cmd/kg` / `internal/kg` 代表重构前布局或迁移目标，不是当前使用路径。
+
 **Date:** 2026-03-11
 
 ## Goal

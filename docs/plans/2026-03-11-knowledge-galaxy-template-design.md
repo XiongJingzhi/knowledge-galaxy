@@ -1,5 +1,10 @@
 # Knowledge Galaxy 1.0 Template Design
 
+> 历史文档状态：本文记录 2026-03-11 的模板设计阶段，不直接代表当前仓库状态。
+> 当前权威文档：`README.md`、`docs/specs/knowledge-galaxy-template-rules.md`、`docs/specs/knowledge-galaxy-1.0-spec.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 如果正文与当前模板文件或当前 spec 不一致，请以当前模板文件和 spec 为准。
+
 **Date:** 2026-03-11
 
 ## Goal

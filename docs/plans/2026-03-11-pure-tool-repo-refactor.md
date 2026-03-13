@@ -1,6 +1,9 @@
 # Pure Tool Repo Refactor Implementation Plan
 
-> Historical note: this plan reflects the repository layout before 2026-03-11. Current implementation paths live under `implementations/python/kg`, `implementations/go/kg`, and `implementations/rust/kg`.
+> 历史文档状态：本文记录 2026-03-11 的纯工具仓库重构计划，不直接代表当前仓库状态。
+> 当前权威文档：`README.md`、`docs/specs/repository-layout.md`、`docs/specs/knowledge-galaxy-1.0-spec.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 文中出现的旧路径或 “`--repo` 必填” 等结论属于当时阶段性设计，请以当前 README 和 spec 为准。
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 

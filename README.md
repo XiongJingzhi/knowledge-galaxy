@@ -29,6 +29,10 @@ Current layout and entrypoint details also live in `docs/specs/repository-layout
 
 当前目录结构和入口说明也记录在 `docs/specs/repository-layout.md`。
 
+Documentation maintenance rules also live in `docs/specs/documentation-governance.md`.
+
+文档维护规则也记录在 `docs/specs/documentation-governance.md`。
+
 ## Requirements / 环境要求
 
 - Python 3
@@ -50,11 +54,11 @@ Shared assets used by the implementations:
 各实现共同使用的仓库级资源包括：
 
 - `templates/` for generated document templates
-- `tests/` for repository-level Python verification
+- `tests/` for repository-level verification
 - `docs/` for specs, plans, and task records
 
 - `templates/`：文档生成模板
-- `tests/`：仓库级 Python 验证
+- `tests/`：仓库级验证
 - `docs/`：规格、计划和任务文档
 
 ## Run And Verify / 运行与验证
@@ -87,6 +91,12 @@ Cross-platform build outputs are written under `dist/`.
 
 跨平台构建产物会输出到 `dist/` 目录。
 
+## CI And Release / CI 与发布
+
+GitHub Actions runs `make test` on pushes to `main` and pull requests, builds Go and Rust binaries for macOS, Linux, and Windows, and updates a fixed `Nightly` prerelease on every push to `main`.
+
+GitHub Actions 会在推送到 `main` 和创建 `pull_request` 时运行 `make test`，为 macOS、Linux、Windows 构建 Go 和 Rust 二进制，并在每次推送到 `main` 时更新固定的 `Nightly` 预发布版本。
+
 Direct implementation entrypoints:
 
 各实现的直接入口如下：
@@ -104,12 +114,14 @@ cd implementations/rust/kg && cargo build
 - Go and Rust are kept in-tree as parallel CLI implementations and can be built independently from their language-specific roots.
 - Go and Rust can also be built for multiple target platforms from the root `Makefile`.
 - If `--repo` is omitted, `kg` uses `~/.knowledge-galax` as the default knowledge repository and creates the base layout on demand.
+- Asset import, export workflows, and reference/asset validation are still planned 1.0 work, not implemented behavior today.
 
 - Python、Go、Rust 三种实现现在都覆盖了相同的 1.0 命令面，包括创建、捕获、校验、查询和项目远端操作。
 - Python 仍然是当前仓库里文档最完整的实现。
 - Go 和 Rust 作为并行 CLI 实现保留在仓库中，可以从各自语言目录独立构建。
 - Go 和 Rust 也可以通过根目录 `Makefile` 构建多平台目标产物。
 - 如果没有传入 `--repo`，`kg` 会默认使用 `~/.knowledge-galax` 作为知识仓库，并在需要时自动创建基础目录。
+- 资源导入、导出工作流、以及 reference/asset 校验目前仍属于 1.0 计划中的未完成功能。
 
 ## Python CLI Usage / Python CLI 用法
 
@@ -205,9 +217,11 @@ If you need language-specific runtime guidance, it is better to add local README
 ## Documentation Notes / 文档说明
 
 - `docs/specs/repository-layout.md` describes the current repository layout and canonical entrypoints.
+- `docs/specs/documentation-governance.md` defines which documents are authoritative and how they should be updated after code changes.
 - Historical files under `docs/plans/` may mention the pre-2026-03-11 layout such as `scripts/kg` or `packages/rust`. Treat those as change history, not current usage docs.
 
 - `docs/specs/repository-layout.md` 描述当前仓库结构和标准入口。
+- `docs/specs/documentation-governance.md` 规定哪些文档是当前权威文档，以及代码变更后应该如何同步更新。
 - `docs/plans/` 下的历史文件可能仍会提到 2026-03-11 之前的目录布局，例如 `scripts/kg` 或 `packages/rust`。这些内容应视为历史变更记录，而不是当前使用说明。
 
 ## Skill Distribution / Skill 分发

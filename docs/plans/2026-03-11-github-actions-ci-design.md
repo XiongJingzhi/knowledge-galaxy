@@ -1,5 +1,10 @@
 # GitHub Actions CI Design
 
+> 历史文档状态：本文记录 2026-03-11 的设计阶段，不直接代表当前仓库状态。
+> 当前权威文档：`README.md`、`.github/workflows/ci.yml`、`docs/specs/repository-layout.md`
+> 当前实现根目录：`implementations/python/kg`、`implementations/go/kg`、`implementations/rust/kg`
+> 如果正文与当前 workflow 不一致，请以当前 workflow 和 README 为准。
+
 **Date:** 2026-03-11
 
 ## Goal

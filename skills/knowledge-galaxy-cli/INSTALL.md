@@ -65,13 +65,49 @@ Installing the skill only teaches the agent how to use the software. The target 
 The current skill assumes the safest command path is:
 
 ```bash
-python3 -m implementations.python.kg --repo /path/to/content-repo ...
+python3 -m implementations.python.kg [--repo /path/to/content-repo] ...
 ```
 
 So the user or agent must also have:
 
 - a checkout of this repository, or
 - an adapted environment where the same command path is available
+
+If `--repo` is omitted, the current CLI defaults to `~/.knowledge-galax`.
+
+如果省略 `--repo`，当前 CLI 会默认使用 `~/.knowledge-galax`。
+
+## Current Capability Boundary / 当前能力边界
+
+As of 2026-03-13, the documented command surface includes:
+
+- create `daily` / `note` / `decision` / `review` / `project`
+- append to daily
+- create note from `stdin`
+- import from clipboard
+- validate / list / search / stats
+- project remote operations
+
+Still planned, not implemented:
+
+- asset import workflows
+- export commands
+- reference and asset validation
+
+截至 2026-03-13，当前已记录的命令能力包括：
+
+- `create daily/note/decision/review/project`
+- `append daily`
+- `create note --stdin`
+- `import from clipboard`
+- `validate / list / search / stats`
+- 项目远端操作
+
+当前仍在计划中、尚未实现的包括：
+
+- 资源导入工作流
+- 导出命令
+- reference / asset 校验
 
 ## Recommended Distribution Pattern
 
