@@ -52,6 +52,7 @@ README.md
 - `append daily`
 - `create note --stdin`
 - `import clipboard note`
+- `import asset`
 - `validate`
 - `list`
 - `search`
@@ -63,10 +64,6 @@ README.md
 - `project fetch`
 - `project push`
 - `project sync`
-
-当前仍属于计划中、尚未实现的能力：
-
-- 资源导入工作流
 
 ## 默认知识仓库
 
@@ -171,12 +168,15 @@ python3 -m implementations.python.kg --repo /path/to/content-repo create project
 python3 -m implementations.python.kg append daily --date 2026-03-12 < capture.txt
 printf 'Captured from stdin\n' | python3 -m implementations.python.kg create note --title "Streamed Note" --stdin
 python3 -m implementations.python.kg import clipboard note --title "Clipboard Note"
+python3 -m implementations.python.kg import asset --file ~/Downloads/diagram.png
+python3 -m implementations.python.kg import asset --file ~/Downloads/cover.png --project atlas --name hero.png
 ```
 
 - `append daily` 会向目标 daily 末尾追加带时间戳的捕获块
 - 如果目标 daily 不存在，会先自动创建
 - `create note --stdin` 会从标准输入读取正文
 - `import clipboard note` 会读取系统剪贴板中的纯文本
+- `import asset` 会复制资源文件到 `assets/`，或复制到 `projects/<slug>/assets/`
 
 ### 查询与校验
 

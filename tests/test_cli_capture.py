@@ -100,6 +100,49 @@ class KGCaptureTests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
         self.assertIn("clipboard is empty", stderr.getvalue())
 
+    def test_import_asset_copies_into_repo_assets(self) -> None:
+        from implementations.python.kg.app import main
+
+        source_file = self.home.root / "diagram.png"
+        source_file.write_bytes(b"png-data")
+        stdout = io.StringIO()
+        with patch.dict(os.environ, {"HOME": str(self.home.root)}, clear=False):
+            with redirect_stdout(stdout):
+                exit_code = main(["import", "asset", "--file", str(source_file)])
+
+        self.assertEqual(exit_code, 0)
+        target = self.repo_root / "assets" / "diagram.png"
+        self.assertTrue(target.exists())
+        self.assertEqual(target.read_bytes(), b"png-data")
+        self.assertEqual(stdout.getvalue().strip(), "assets/diagram.png")
+
+    def test_import_asset_supports_project_assets_and_rename(self) -> None:
+        from implementations.python.kg.app import main
+
+        source_file = self.home.root / "screenshot.png"
+        source_file.write_bytes(b"project-asset")
+        stdout = io.StringIO()
+        with patch.dict(os.environ, {"HOME": str(self.home.root)}, clear=False):
+            with redirect_stdout(stdout):
+                exit_code = main(
+                    [
+                        "import",
+                        "asset",
+                        "--file",
+                        str(source_file),
+                        "--project",
+                        "atlas",
+                        "--name",
+                        "hero.png",
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        target = self.repo_root / "projects" / "atlas" / "assets" / "hero.png"
+        self.assertTrue(target.exists())
+        self.assertEqual(target.read_bytes(), b"project-asset")
+        self.assertEqual(stdout.getvalue().strip(), "projects/atlas/assets/hero.png")
+
     def test_validate_and_stats_work_without_repo_argument(self) -> None:
         from implementations.python.kg.app import main
 

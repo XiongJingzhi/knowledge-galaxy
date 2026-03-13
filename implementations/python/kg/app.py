@@ -6,12 +6,14 @@ import sqlite3
 import sys
 from typing import Sequence
 import os
+import shutil
 import subprocess
 
 from .core.frontmatter import generate_document_id, utc_timestamp
 from .core.indexer import rebuild_index
 from .core.repository import (
     add_git_remote,
+    asset_path,
     daily_path,
     decision_path,
     fetch_git_remote,
@@ -76,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     clipboard_note_parser = clipboard_subparsers.add_parser("note")
     clipboard_note_parser.add_argument("--title", required=True)
+
+    asset_parser = import_subparsers.add_parser("asset")
+    asset_parser.add_argument("--file", required=True)
+    asset_parser.add_argument("--name")
+    asset_parser.add_argument("--project")
 
     project_ops_parser = subparsers.add_parser("project")
     project_ops_subparsers = project_ops_parser.add_subparsers(dest="project_command")
@@ -298,18 +305,27 @@ def run(args: argparse.Namespace) -> int:
         return 0
     if args.command == "import":
         repo_root = resolve_repo_root(args.repo, create_if_missing=True)
-        if args.import_type != "clipboard" or args.clipboard_type != "note":
-            raise CommandError("Unsupported import type")
-        slug = slugify(args.title)
-        created_path = create_document(
-            repo_root=repo_root,
-            template_name="note",
-            title=args.title,
-            target_path=note_path(repo_root, slug),
-            body=read_clipboard_text(),
-        )
-        print(created_path.relative_to(repo_root).as_posix())
-        return 0
+        if args.import_type == "clipboard" and args.clipboard_type == "note":
+            slug = slugify(args.title)
+            created_path = create_document(
+                repo_root=repo_root,
+                template_name="note",
+                title=args.title,
+                target_path=note_path(repo_root, slug),
+                body=read_clipboard_text(),
+            )
+            print(created_path.relative_to(repo_root).as_posix())
+            return 0
+        if args.import_type == "asset":
+            imported_path = import_asset(
+                repo_root=repo_root,
+                source_path=Path(args.file).expanduser(),
+                target_name=args.name,
+                project_slug=args.project,
+            )
+            print(imported_path.relative_to(repo_root).as_posix())
+            return 0
+        raise CommandError("Unsupported import type")
     if args.command == "validate":
         repo_root = resolve_repo_root(args.repo)
         errors = validate_repository(repo_root)
@@ -461,6 +477,27 @@ def export_change_list(connection: sqlite3.Connection) -> list[dict[str, str]]:
         }
         for row in rows
     ]
+
+
+def import_asset(
+    repo_root: Path,
+    source_path: Path,
+    target_name: str | None = None,
+    project_slug: str | None = None,
+) -> Path:
+    source = source_path.resolve()
+    if not source.exists() or not source.is_file():
+        raise CommandError(f"Asset file does not exist: {source}")
+    filename = target_name or source.name
+    try:
+        target_path = asset_path(repo_root, filename, project_slug)
+    except ValueError as exc:
+        raise CommandError(str(exc)) from exc
+    if target_path.exists():
+        raise CommandError(f"Target file already exists: {target_path}")
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target_path)
+    return target_path
 
 
 def normalize_argv(argv: Sequence[str] | None) -> list[str] | None:

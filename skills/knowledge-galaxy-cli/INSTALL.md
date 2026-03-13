@@ -94,16 +94,13 @@ python3 -m implementations.python.kg [--repo /path/to/content-repo] ...
 - `append daily`
 - `create note --stdin`
 - `import clipboard note`
+- `import asset`
 - `validate`
 - `list`
 - `search`
 - `stats`
 - `export document-list / manifest / change-list`
 - 项目远端操作
-
-当前仍在计划中、尚未实现的能力包括：
-
-- 资源导入工作流
 
 ## 推荐分发方式
 

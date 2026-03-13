@@ -40,7 +40,7 @@ indexes/
 - `references/`：外部资料与参考内容的保留目录
 - `themes/`：主题锚点文档目录
 - `projects/`：项目目录，每个项目一个子目录
-- `assets/`：资源目录，1.0 中尚未实现导入工作流
+- `assets/`：共享资源目录，当前支持通过 `import asset` 导入
 - `inbox/`：待归类内容目录，当前实现尚未提供专门命令
 - `indexes/`：派生索引目录，例如 SQLite 数据库
 
@@ -158,6 +158,33 @@ Note 是最通用的长期知识单元，用于承载独立笔记内容。
 - `decision` 用于记录决策及其背景
 - `review` 用于记录复盘与回顾
 
+### 5.5 Asset
+
+当前资源导入规则如下：
+
+- `import asset --file /path/to/file`：
+  复制到 `assets/<filename>`
+- `import asset --file /path/to/file --name hero.png`：
+  复制到 `assets/hero.png`
+- `import asset --file /path/to/file --project atlas`：
+  复制到 `projects/atlas/assets/<filename>`
+- `import asset --file /path/to/file --project atlas --name hero.png`：
+  复制到 `projects/atlas/assets/hero.png`
+
+当前约束：
+
+- `--file` 必填，且必须指向已存在文件
+- `--name` 只能是文件名，不能包含目录穿越
+- 如果目标文件已存在，命令会失败
+- 成功时输出相对仓库根目录的目标路径
+
+Markdown 引用示例：
+
+```md
+![架构图](../assets/diagram.png)
+![项目封面](assets/hero.png)
+```
+
 ## 6. 索引边界
 
 Knowledge Galaxy 1.0 定义索引层，但索引层不是事实来源。
@@ -234,6 +261,7 @@ CLI 可执行名为 `kg`。
 - `append daily`
 - `create note --stdin`
 - `import clipboard note`
+- `import asset`
 - `validate`
 - `list`
 - `search`
@@ -270,7 +298,7 @@ CLI 可执行名为 `kg`。
 
 以下能力仍在 1.0 计划中，但截至 2026-03-13 尚未落地：
 
-- 资源导入命令
+- 更完整的资源生命周期工作流，例如资源清单和去重策略
 
 ## 9. 文档与实现对齐原则
 

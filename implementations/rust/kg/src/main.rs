@@ -722,6 +722,9 @@ fn cmd_append(repo_root: &Path, args: &[String]) -> i32 {
 }
 
 fn cmd_import(repo_root: &Path, args: &[String]) -> i32 {
+    if !args.is_empty() && args[0] == "asset" {
+        return cmd_import_asset(repo_root, &args[1..]);
+    }
     if args.len() < 2 || args[0] != "clipboard" || args[1] != "note" {
         eprintln!("Unsupported import type");
         return 1;
@@ -769,6 +772,88 @@ fn cmd_import(repo_root: &Path, args: &[String]) -> i32 {
     let code = create_from_template(repo_root, "note", &map, Some(body.as_str()), &target);
     if code != 0 {
         return code;
+    }
+    println!("{}", rel_path(repo_root, &target));
+    0
+}
+
+fn cmd_import_asset(repo_root: &Path, args: &[String]) -> i32 {
+    let mut file: Option<String> = None;
+    let mut name: Option<String> = None;
+    let mut project: Option<String> = None;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--file" if i + 1 < args.len() => {
+                file = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--name" if i + 1 < args.len() => {
+                name = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--project" if i + 1 < args.len() => {
+                project = Some(args[i + 1].clone());
+                i += 2;
+            }
+            _ => i += 1,
+        }
+    }
+    let source = match file {
+        Some(path) => must_abs(&path),
+        None => {
+            eprintln!("--file is required");
+            return 1;
+        }
+    };
+    let source_path = PathBuf::from(&source);
+    if !source_path.is_file() {
+        eprintln!("Asset file does not exist: {}", source);
+        return 1;
+    }
+    let filename = name.unwrap_or_else(|| {
+        source_path
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default()
+    });
+    if filename.is_empty()
+        || Path::new(&filename)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            != Some(filename.clone())
+    {
+        eprintln!("Asset name must be a file name: {}", filename);
+        return 1;
+    }
+    let target = match project {
+        Some(slug) => repo_root
+            .join("projects")
+            .join(slug)
+            .join("assets")
+            .join(&filename),
+        None => repo_root.join("assets").join(&filename),
+    };
+    if target.exists() {
+        eprintln!("Target file already exists: {}", target.display());
+        return 1;
+    }
+    if let Some(parent) = target.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            eprintln!("{}", e);
+            return 1;
+        }
+    }
+    let data = match fs::read(&source_path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            eprintln!("{}", e);
+            return 1;
+        }
+    };
+    if let Err(e) = fs::write(&target, data) {
+        eprintln!("{}", e);
+        return 1;
     }
     println!("{}", rel_path(repo_root, &target));
     0

@@ -100,6 +100,13 @@ printf 'Captured from stdin\n' | python3 -m implementations.python.kg create not
 python3 -m implementations.python.kg import clipboard note --title "Clipboard Note"
 ```
 
+### 导入资源文件
+
+```bash
+python3 -m implementations.python.kg --repo /path/to/content-repo import asset --file ~/Downloads/diagram.png
+python3 -m implementations.python.kg --repo /path/to/content-repo import asset --file ~/Downloads/cover.png --project atlas --name hero.png
+```
+
 ### 创建 decision
 
 ```bash
@@ -179,6 +186,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo project sync -
 ## 输出约定
 
 - `create ...` 会输出创建后的相对路径
+- `import asset` 会输出导入后的相对资源路径
 - `validate` 成功时输出 `OK`，失败时逐行输出错误
 - `list` 输出以 tab 分隔的 `type`、`title`、`path`
 - `search` 输出与 `list` 相同格式的匹配结果
@@ -199,6 +207,9 @@ python3 -m implementations.python.kg --repo /path/to/content-repo project sync -
 
 - 误以为外部模板是必需的
   处理方式：当前外部模板是可选的；缺失时会回退到内置模板
+
+- 误以为 `import asset --name` 可以携带目录
+  处理方式：`--name` 只能是文件名；项目级目录应通过 `--project` 指定
 
 ## 参考文档
 

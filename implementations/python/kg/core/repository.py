@@ -135,6 +135,14 @@ def review_path(repo_root: Path, slug: str) -> Path:
     return repo_root / "reviews" / f"{slug}.md"
 
 
+def asset_path(repo_root: Path, filename: str, project: str | None = None) -> Path:
+    if filename != Path(filename).name:
+        raise ValueError(f"Asset name must be a file name: {filename}")
+    if project:
+        return repo_root / "projects" / project / "assets" / filename
+    return repo_root / "assets" / filename
+
+
 def project_path(repo_root: Path, slug: str) -> Path:
     return repo_root / "projects" / slug / "README.md"
 

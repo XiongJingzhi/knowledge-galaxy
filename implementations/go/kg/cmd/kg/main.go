@@ -554,6 +554,9 @@ func cmdImport(repoRoot string, args []string) int {
 		return 1
 	}
 	if len(args) < 2 || args[0] != "clipboard" || args[1] != "note" {
+		if len(args) > 0 && args[0] == "asset" {
+			return cmdImportAsset(repoRoot, args[1:])
+		}
 		fmt.Fprintln(os.Stderr, "Unsupported import type")
 		return 1
 	}
@@ -588,6 +591,61 @@ func cmdImport(repoRoot string, args []string) int {
 		"created_at": isoNow,
 		"updated_at": isoNow,
 	}, body, target)
+}
+
+func cmdImportAsset(repoRoot string, args []string) int {
+	flags := flag.NewFlagSet("import-asset", flag.ContinueOnError)
+	flags.SetOutput(newDiscard())
+	filePath := flags.String("file", "", "source asset file")
+	name := flags.String("name", "", "target file name")
+	project := flags.String("project", "", "project slug")
+	if err := flags.Parse(args); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	if *filePath == "" {
+		fmt.Fprintln(os.Stderr, "--file is required")
+		return 1
+	}
+	source := mustAbs(*filePath)
+	info, err := os.Stat(source)
+	if err != nil || info.IsDir() {
+		fmt.Fprintf(os.Stderr, "Asset file does not exist: %s\n", source)
+		return 1
+	}
+	filename := *name
+	if filename == "" {
+		filename = filepath.Base(source)
+	}
+	if filename != filepath.Base(filename) {
+		fmt.Fprintf(os.Stderr, "Asset name must be a file name: %s\n", filename)
+		return 1
+	}
+	var target string
+	if *project != "" {
+		target = filepath.Join(repoRoot, "projects", *project, "assets", filename)
+	} else {
+		target = filepath.Join(repoRoot, "assets", filename)
+	}
+	if _, err := os.Stat(target); err == nil {
+		fmt.Fprintf(os.Stderr, "Target file already exists: %s\n", target)
+		return 1
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	data, err := os.ReadFile(source)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	if err := os.WriteFile(target, data, 0o644); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	fmt.Println(relPath(repoRoot, target))
+	return 0
 }
 
 func readStdinText() (string, error) {

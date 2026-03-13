@@ -126,3 +126,26 @@ Body
         payload = json.loads(result.stdout)
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["documents"][0]["path"], "notes/go-note.md")
+
+    def test_import_asset_supports_repo_and_project_assets(self) -> None:
+        source_file = self.home.root / "go-asset.png"
+        source_file.write_bytes(b"go-asset")
+
+        repo_result = self.run_go(["import", "asset", "--file", str(source_file)])
+        self.assertEqual(repo_result.returncode, 0, msg=repo_result.stderr)
+        self.assertTrue((self.repo_root / "assets" / "go-asset.png").exists())
+
+        project_result = self.run_go(
+            [
+                "import",
+                "asset",
+                "--file",
+                str(source_file),
+                "--project",
+                "atlas",
+                "--name",
+                "cover.png",
+            ]
+        )
+        self.assertEqual(project_result.returncode, 0, msg=project_result.stderr)
+        self.assertTrue((self.repo_root / "projects" / "atlas" / "assets" / "cover.png").exists())

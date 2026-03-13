@@ -59,6 +59,7 @@ make test-rust
 
 - `create` 下的文档创建命令
 - `append` 和 `import` 下的捕获命令
+- `import asset` 资源导入命令
 - 仓库校验（包括 `assets/` / `references/` 相对链接存在性检查）
 - 仓库的列表、搜索和统计
 - JSON 导出：`document-list` / `manifest` / `change-list`
@@ -87,6 +88,8 @@ cargo build
 printf 'Captured from stdin\n' | ./target/debug/kg create note --title "Streamed Note" --stdin
 printf 'Captured for today\n' | ./target/debug/kg append daily
 ./target/debug/kg import clipboard note --title "Clipboard Note"
+./target/debug/kg import asset --file ~/Downloads/diagram.png
+./target/debug/kg import asset --file ~/Downloads/cover.png --project atlas --name hero.png
 ```
 
 校验和查询仓库：
