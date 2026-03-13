@@ -290,9 +290,10 @@ export function App() {
                   <span>类型</span>
                   <select
                     value={createForm.type}
-                    onChange={(event) =>
-                      setCreateForm((current) => ({ ...current, type: event.currentTarget.value }))
-                    }
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setCreateForm((current) => ({ ...current, type: value }));
+                    }}
                   >
                     <option value="note">note</option>
                     <option value="daily">daily</option>
@@ -305,18 +306,20 @@ export function App() {
                   <span>标题</span>
                   <input
                     value={createForm.title}
-                    onChange={(event) =>
-                      setCreateForm((current) => ({ ...current, title: event.currentTarget.value }))
-                    }
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setCreateForm((current) => ({ ...current, title: value }));
+                    }}
                   />
                 </label>
                 <label className="field">
                   <span>日期</span>
                   <input
                     value={createForm.date}
-                    onChange={(event) =>
-                      setCreateForm((current) => ({ ...current, date: event.currentTarget.value }))
-                    }
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setCreateForm((current) => ({ ...current, date: value }));
+                    }}
                     placeholder="review / daily 使用"
                   />
                 </label>
@@ -324,12 +327,13 @@ export function App() {
                   <span>Git Worktree</span>
                   <input
                     value={createForm.gitWorktree}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
                       setCreateForm((current) => ({
                         ...current,
-                        gitWorktree: event.currentTarget.value,
-                      }))
-                    }
+                        gitWorktree: value,
+                      }));
+                    }}
                     placeholder="project 使用"
                   />
                 </label>
@@ -338,9 +342,10 @@ export function App() {
                 <span>正文</span>
                 <textarea
                   value={createForm.body}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({ ...current, body: event.currentTarget.value }))
-                  }
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setCreateForm((current) => ({ ...current, body: value }));
+                  }}
                   placeholder="note 创建时可直接写入正文"
                 />
               </label>
@@ -374,12 +379,12 @@ export function App() {
                     </label>
                     <label className="field">
                       <span>项目 slug</span>
-                      <input
-                        value={assetProjectFilter}
-                        onChange={(event) => setAssetProjectFilter(event.currentTarget.value)}
-                        placeholder="仅项目级过滤时生效"
-                        disabled={assetScope !== "project"}
-                      />
+                    <input
+                      value={assetProjectFilter}
+                      onChange={(event) => setAssetProjectFilter(event.currentTarget.value)}
+                      placeholder="仅项目级过滤时生效"
+                      disabled={assetScope !== "project"}
+                    />
                     </label>
                   </div>
                 </section>
@@ -399,27 +404,30 @@ export function App() {
                     <span>本地文件路径</span>
                     <input
                       value={assetForm.filePath}
-                      onChange={(event) =>
-                        setAssetForm((current) => ({ ...current, filePath: event.currentTarget.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setAssetForm((current) => ({ ...current, filePath: value }));
+                      }}
                     />
                   </label>
                   <label className="field">
                     <span>目标文件名</span>
                     <input
                       value={assetForm.targetName}
-                      onChange={(event) =>
-                        setAssetForm((current) => ({ ...current, targetName: event.currentTarget.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setAssetForm((current) => ({ ...current, targetName: value }));
+                      }}
                     />
                   </label>
                   <label className="field">
                     <span>项目 slug</span>
                     <input
                       value={assetForm.project}
-                      onChange={(event) =>
-                        setAssetForm((current) => ({ ...current, project: event.currentTarget.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setAssetForm((current) => ({ ...current, project: value }));
+                      }}
                     />
                   </label>
                 </div>
@@ -512,36 +520,40 @@ export function App() {
                     <span>Remote 名称</span>
                     <input
                       value={remoteForm.name}
-                      onChange={(event) =>
-                        setRemoteForm((current) => ({ ...current, name: event.currentTarget.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setRemoteForm((current) => ({ ...current, name: value }));
+                      }}
                     />
                   </label>
                   <label className="field">
                     <span>Remote URL</span>
                     <input
                       value={remoteForm.url}
-                      onChange={(event) =>
-                        setRemoteForm((current) => ({ ...current, url: event.currentTarget.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setRemoteForm((current) => ({ ...current, url: value }));
+                      }}
                     />
                   </label>
                   <label className="field">
                     <span>远端别名</span>
                     <input
                       value={remoteForm.remote}
-                      onChange={(event) =>
-                        setRemoteForm((current) => ({ ...current, remote: event.currentTarget.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setRemoteForm((current) => ({ ...current, remote: value }));
+                      }}
                     />
                   </label>
                   <label className="field">
                     <span>分支</span>
                     <input
                       value={remoteForm.branch}
-                      onChange={(event) =>
-                        setRemoteForm((current) => ({ ...current, branch: event.currentTarget.value }))
-                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setRemoteForm((current) => ({ ...current, branch: value }));
+                      }}
                     />
                   </label>
                 </div>
