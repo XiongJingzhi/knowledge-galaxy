@@ -169,4 +169,41 @@ describe("App", () => {
 
     expect(await screen.findByText(/"total": 2/)).toBeInTheDocument();
   });
+
+  it("saves edited document details from the document workbench", async () => {
+    mockedApi.listDocuments.mockResolvedValue([
+      {
+        path: "notes/idea.md",
+        title: "Idea",
+        type: "note",
+        status: "active",
+      },
+    ]);
+    mockedApi.saveDocument.mockResolvedValue({
+      path: "notes/idea.md",
+      updatedAt: "2026-03-13T01:00:00Z",
+    });
+
+    render(<App />);
+
+    await screen.findByText("Idea");
+
+    fireEvent.click(screen.getByRole("button", { name: "Idea note · active notes/idea.md" }));
+    await screen.findByDisplayValue("Idea");
+
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "Idea Updated" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存文档" }));
+
+    await waitFor(() => {
+      expect(mockedApi.saveDocument).toHaveBeenCalledWith(
+        "notes/idea.md",
+        expect.objectContaining({
+          path: "notes/idea.md",
+          title: "Idea Updated",
+        }),
+      );
+    });
+  });
 });
