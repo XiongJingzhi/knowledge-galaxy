@@ -42,6 +42,7 @@
 - [x] 为 `list/search` 补齐 `status / project / date` 过滤能力
 - [x] 为 `list/search` 补齐 `theme / tag / source` 过滤能力
 - [x] 为 `stats` 补齐主题分布与标签频率统计
+- [x] 为 `stats` 补齐来源分布统计
 - [x] 定义索引重建与导出行为
 
 ## 阶段 6：校验

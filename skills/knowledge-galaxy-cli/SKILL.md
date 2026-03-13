@@ -178,6 +178,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo search idea --
 
 - `theme:<slug>` 主题分布
 - `tag:<slug>` 标签频率
+- `source:<slug>` 来源分布
 
 ### 查看统计
 

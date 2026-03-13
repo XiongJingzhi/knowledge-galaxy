@@ -1113,6 +1113,7 @@ fn cmd_stats(repo_root: &Path) -> i32 {
     let mut by_status: std::collections::BTreeMap<String, usize> = Default::default();
     let mut by_theme: std::collections::BTreeMap<String, usize> = Default::default();
     let mut by_tag: std::collections::BTreeMap<String, usize> = Default::default();
+    let mut by_source: std::collections::BTreeMap<String, usize> = Default::default();
     for d in idx {
         *by_type.entry(d.type_).or_default() += 1;
         *by_status.entry(d.status).or_default() += 1;
@@ -1121,6 +1122,9 @@ fn cmd_stats(repo_root: &Path) -> i32 {
         }
         for tag in d.tags {
             *by_tag.entry(tag).or_default() += 1;
+        }
+        for source in d.source {
+            *by_source.entry(source).or_default() += 1;
         }
     }
     for (k, v) in by_type {
@@ -1134,6 +1138,9 @@ fn cmd_stats(repo_root: &Path) -> i32 {
     }
     for (k, v) in by_tag {
         println!("tag:{}\t{}", k, v);
+    }
+    for (k, v) in by_source {
+        println!("source:{}\t{}", k, v);
     }
     0
 }

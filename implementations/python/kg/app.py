@@ -471,7 +471,7 @@ def run_stats(connection: sqlite3.Connection) -> int:
     ):
         print(f"status:{status}\t{count}")
 
-    for prefix, column in (("theme", "theme"), ("tag", "tags")):
+    for prefix, column in (("theme", "theme"), ("tag", "tags"), ("source", "source")):
         counts: dict[str, int] = {}
         for (payload,) in connection.execute(f"SELECT {column} FROM documents"):
             for value in json.loads(payload or "[]"):

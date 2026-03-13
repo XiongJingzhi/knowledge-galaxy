@@ -156,6 +156,7 @@ Body
         self.assertIn("theme:knowledge\t1", result.stdout)
         self.assertIn("tag:idea\t1", result.stdout)
         self.assertIn("tag:mvp\t1", result.stdout)
+        self.assertIn("source:field-notes\t1", result.stdout)
 
     def test_import_asset_supports_repo_and_project_assets(self) -> None:
         source_file = self.home.root / "go-asset.png"

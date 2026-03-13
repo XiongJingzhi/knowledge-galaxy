@@ -99,6 +99,7 @@ class KGQueryTests(unittest.TestCase):
         self.assertIn("theme:systems\t1", output)
         self.assertIn("tag:idea\t4", output)
         self.assertIn("tag:mvp\t4", output)
+        self.assertIn("source:field-notes\t1", output)
 
     def test_list_supports_status_project_and_date_filters(self) -> None:
         output = self.run_cli("list", "--status", "active", "--project", "atlas")
