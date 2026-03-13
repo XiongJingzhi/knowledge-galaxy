@@ -108,6 +108,7 @@ printf 'Captured for today\n' | ./target/debug/kg append daily
 ```
 
 `stats` 会输出总量、类型分布、状态分布，以及 `theme:*`、`tag:*`、`source:*` 统计行。
+`export asset-list` 会输出资源路径、作用域、大小，以及 `sha256`。
 
 操作项目仓库：
 

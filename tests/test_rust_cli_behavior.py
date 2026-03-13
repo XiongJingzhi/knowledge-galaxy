@@ -162,9 +162,11 @@ Body
         payload = json.loads(result.stdout)
         self.assertEqual(payload[0]["path"], "assets/diagram.png")
         self.assertEqual(payload[0]["scope"], "repo")
+        self.assertRegex(payload[0]["sha256"], r"^[0-9a-f]{64}$")
         self.assertEqual(payload[1]["path"], "projects/atlas/assets/cover.png")
         self.assertEqual(payload[1]["scope"], "project")
         self.assertEqual(payload[1]["project"], "atlas")
+        self.assertRegex(payload[1]["sha256"], r"^[0-9a-f]{64}$")
 
     def test_stats_include_theme_and_tag_counts(self) -> None:
         self.repo_root.mkdir(parents=True, exist_ok=True)

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -970,6 +971,7 @@ func exportAssetList(repoRoot string) []map[string]any {
 				"path":       relPath(repoRoot, path),
 				"scope":      "repo",
 				"size_bytes": st.Size(),
+				"sha256":     fileSHA256(path),
 			})
 			return nil
 		})
@@ -991,6 +993,7 @@ func exportAssetList(repoRoot string) []map[string]any {
 				"scope":      "project",
 				"project":    project,
 				"size_bytes": st.Size(),
+				"sha256":     fileSHA256(path),
 			})
 			return nil
 		})
@@ -999,6 +1002,15 @@ func exportAssetList(repoRoot string) []map[string]any {
 		return out[i]["path"].(string) < out[j]["path"].(string)
 	})
 	return out
+}
+
+func fileSHA256(path string) string {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(content)
+	return fmt.Sprintf("%x", sum)
 }
 
 // --- project git operations ---

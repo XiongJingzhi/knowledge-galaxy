@@ -195,6 +195,8 @@ python3 -m implementations.python.kg --repo /path/to/content-repo export change-
 python3 -m implementations.python.kg --repo /path/to/content-repo export asset-list
 ```
 
+`asset-list` 会返回资源路径、作用域、大小，以及可用于去重分析的 `sha256`。
+
 ### 管理项目远端
 
 ```bash

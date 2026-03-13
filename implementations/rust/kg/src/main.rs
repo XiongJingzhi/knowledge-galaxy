@@ -1,3 +1,4 @@
+use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
 use std::io::{self, Read};
@@ -1249,6 +1250,7 @@ fn export_asset_list_json(repo_root: &Path) -> String {
                 ("path", json_string(path)),
                 ("scope", json_string(scope)),
                 ("size_bytes", size_bytes.to_string()),
+                ("sha256", json_string(&file_sha256(repo_root.join(path)))),
             ];
             if let Some(project_name) = project {
                 fields.push(("project", json_string(project_name)));
@@ -1286,6 +1288,15 @@ fn visit_assets(
         }
     }
     Ok(())
+}
+
+fn file_sha256(path: PathBuf) -> String {
+    let Ok(bytes) = fs::read(path) else {
+        return String::new();
+    };
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }
 
 fn json_object(fields: &[(&str, String)]) -> String {

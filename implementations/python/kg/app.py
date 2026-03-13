@@ -1,5 +1,6 @@
 import argparse
 from datetime import date, datetime, UTC
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -556,6 +557,7 @@ def export_asset_list(repo_root: Path) -> list[dict[str, object]]:
                         "path": path.relative_to(repo_root).as_posix(),
                         "scope": "repo",
                         "size_bytes": path.stat().st_size,
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                     }
                 )
 
@@ -571,6 +573,7 @@ def export_asset_list(repo_root: Path) -> list[dict[str, object]]:
                             "scope": "project",
                             "project": project_slug,
                             "size_bytes": path.stat().st_size,
+                            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                         }
                     )
     return assets
