@@ -18,19 +18,27 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <span className="sidebar__kicker">TAURI WORKBENCH</span>
+        <span className="sidebar__kicker">RESEARCH DESK</span>
         <h1>Knowledge Galaxy</h1>
         <p>面向当前知识库的桌面工作台。</p>
+        <div className="sidebar__seal">
+          <strong>KG</strong>
+          <span>Archive Console</span>
+        </div>
       </div>
       <nav className="sidebar__nav">
-        {(Object.keys(labels) as NavSection[]).map((item) => (
+        {(Object.keys(labels) as NavSection[]).map((item, index) => (
           <button
             key={item}
             className={item === section ? "sidebar__nav-item is-active" : "sidebar__nav-item"}
             onClick={() => onChange(item)}
             type="button"
+            aria-label={labels[item]}
           >
-            {labels[item]}
+            <span className="sidebar__nav-index" aria-hidden="true">
+              {(index + 1).toString().padStart(2, "0")}
+            </span>
+            <span>{labels[item]}</span>
           </button>
         ))}
       </nav>

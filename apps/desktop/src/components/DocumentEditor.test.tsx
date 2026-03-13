@@ -22,6 +22,13 @@ const detail: DocumentDetail = {
 };
 
 describe("DocumentEditor", () => {
+  it("renders a guided empty state when no document is selected", () => {
+    render(<DocumentEditor document={null} onSave={() => undefined} />);
+
+    expect(screen.getByText("还没有选中文档")).toBeInTheDocument();
+    expect(screen.getByText("从左侧列表选择一篇文档，右侧就会切换到可编辑的档案视图。")).toBeInTheDocument();
+  });
+
   it("marks editor dirty after changes and emits save payload", () => {
     const saves: DocumentDetail[] = [];
     render(<DocumentEditor document={detail} onSave={(value) => saves.push(value)} />);

@@ -12,12 +12,19 @@
 
 桌面端当前已经覆盖以下工作台：
 
+- 概览带：总文档数、资源数、最近仓库数量，以及主要 type / status / theme 或 source 分布
 - 文档浏览：列表、搜索、按 `type/status/project/date/theme/tag/source` 过滤
 - 文档编辑：frontmatter 字段编辑、Markdown 正文编辑与预览
 - 创建中心：`daily / note / decision / review / project`
 - 资源中心：查看 `asset-list`，按仓库级/项目级切换浏览，并导入仓库级或项目级资源
 - 校验与导出：`validate`、`document-list`、`manifest`、`change-list`、`asset-list`
 - 项目操作：`add-remote`、`fetch`、`push`、`sync`
+
+桌面端当前也已经补上了更完整的反馈层：
+
+- 文档、资源和编辑区都提供空状态引导
+- 文档工作台会显示当前搜索或筛选组成的“当前视图”说明
+- 概览与列表共享同一套档案工作台视觉语言，而不是普通后台风格
 
 ## 运行依赖
 
@@ -62,6 +69,7 @@ cargo build --manifest-path src-tauri/Cargo.toml
 - Go / Rust CLI 当前不作为桌面端运行时后端
 - 资源面板展示 `sha256`，但当前不自动做去重处理
 - 文档保存时会按当前 frontmatter 规范重写文件
+- 当前视觉方向是“研究台 / 档案台”，后续继续增强时应保持这种高密度但可读的工作台风格
 
 ## 后续方向
 

@@ -40,9 +40,20 @@ function arrangeApi() {
   mockedApi.searchDocuments.mockResolvedValue([]);
   mockedApi.listAssets.mockResolvedValue([]);
   mockedApi.getStats.mockResolvedValue({
-    total: 0,
-    groups: {},
-    raw: "total\t0",
+    total: 12,
+    groups: {
+      type: [
+        { key: "note", count: 6 },
+        { key: "project", count: 2 },
+      ],
+      status: [
+        { key: "active", count: 8 },
+        { key: "inbox", count: 4 },
+      ],
+      theme: [{ key: "knowledge", count: 3 }],
+      source: [{ key: "field-notes", count: 2 }],
+    },
+    raw: "total\t12",
   });
   mockedApi.listProjects.mockResolvedValue([
     { path: "projects/atlas/README.md", title: "Atlas", slug: "atlas" },
@@ -97,6 +108,30 @@ describe("App", () => {
     await waitFor(() => {
       expect(mockedApi.selectRepo).toHaveBeenCalledWith("/tmp/alt-repo");
     });
+  });
+
+  it("renders overview cards from repository stats", async () => {
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    expect(await screen.findByText("总文档")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("type · note")).toBeInTheDocument();
+    expect(screen.getByText("6")).toBeInTheDocument();
+    expect(screen.getByText("status · active")).toBeInTheDocument();
+    expect(screen.getByText("theme · knowledge")).toBeInTheDocument();
+  });
+
+  it("shows an empty-state message when the current document view has no results", async () => {
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    expect(
+      await screen.findByText("当前视图没有文档结果"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("试试清空筛选条件，或者直接去创建一篇新文档。")).toBeInTheDocument();
   });
 
   it("runs project add-remote with the selected project and remote form values", async () => {
@@ -280,6 +315,7 @@ describe("App", () => {
       expect(mockedApi.searchDocuments).toHaveBeenCalledWith("search phrase", {});
     });
     expect(await screen.findByText("Search Hit")).toBeInTheDocument();
+    expect(screen.getByText("当前视图 · 搜索 “search phrase”")).toBeInTheDocument();
   });
 
   it("re-queries document list when a status filter changes", async () => {
@@ -296,6 +332,7 @@ describe("App", () => {
         expect.objectContaining({ status: "active" }),
       );
     });
+    expect(screen.getByText("当前视图 · status: active")).toBeInTheDocument();
   });
 
   it("imports an asset with project and target name from the asset workbench", async () => {

@@ -28,7 +28,13 @@ export function DocumentEditor({
   }, [document]);
 
   if (!draft) {
-    return <section className="panel detail-panel empty">选择一篇文档开始编辑。</section>;
+    return (
+      <section className="panel detail-panel empty">
+        <span className="eyebrow">DOCUMENT DETAIL</span>
+        <h3>还没有选中文档</h3>
+        <p>从左侧列表选择一篇文档，右侧就会切换到可编辑的档案视图。</p>
+      </section>
+    );
   }
 
   const patch = (next: Partial<DocumentDetail>) => {

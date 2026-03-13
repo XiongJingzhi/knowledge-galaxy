@@ -88,6 +88,51 @@ export function App() {
   });
 
   const activeProject = useMemo(() => selectedProject, [selectedProject]);
+  const activeFilterEntries = useMemo(
+    () =>
+      Object.entries(filters).filter((entry): entry is [string, string] => {
+        const value = entry[1];
+        return typeof value === "string" && value.trim().length > 0;
+      }),
+    [filters],
+  );
+  const viewLabel = useMemo(() => {
+    if (query.trim()) {
+      return `当前视图 · 搜索 “${query.trim()}”`;
+    }
+    if (activeFilterEntries.length) {
+      return `当前视图 · ${activeFilterEntries
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(" · ")}`;
+    }
+    return "当前视图 · 全部文档";
+  }, [activeFilterEntries, query]);
+  const overviewCards = useMemo(() => {
+    const cards = [
+      { label: "总文档", value: String(stats?.total ?? 0), accent: "signal" },
+      { label: "资源数", value: String(assets.length), accent: "ink" },
+      { label: "最近仓库", value: String(recentRepos.length), accent: "muted" },
+    ];
+    if (!stats) {
+      return cards;
+    }
+    const firstGroup = (groupName: string) => stats.groups[groupName]?.[0];
+    const highlights = [
+      ["type", firstGroup("type")],
+      ["status", firstGroup("status")],
+      ["theme", firstGroup("theme") ?? firstGroup("source")],
+    ] as const;
+    for (const [groupName, group] of highlights) {
+      if (group) {
+        cards.push({
+          label: `${groupName} · ${group.key}`,
+          value: String(group.count),
+          accent: "soft",
+        });
+      }
+    }
+    return cards;
+  }, [assets.length, recentRepos.length, stats]);
 
   const refreshOverview = async (repoPath?: string) => {
     try {
@@ -253,6 +298,17 @@ export function App() {
         </header>
         {error ? <div className="error-banner">{error}</div> : null}
         <div className="workspace__content">
+          <section className="overview-strip">
+            {overviewCards.map((card) => (
+              <article
+                key={card.label}
+                className={`overview-card overview-card--${card.accent}`}
+              >
+                <span className="overview-card__label">{card.label}</span>
+                <strong className="overview-card__value">{card.value}</strong>
+              </article>
+            ))}
+          </section>
           {section === "documents" ? (
             <div className="content-grid">
               <section className="panel">
@@ -260,28 +316,40 @@ export function App() {
                   <h3>文档浏览</h3>
                   <span>{documents.length} 条</span>
                 </div>
+                <div className="view-context">
+                  <strong>{viewLabel}</strong>
+                  <span>用搜索与筛选收敛你当前正在处理的知识切片。</span>
+                </div>
                 <label className="field field--wide">
                   <span>搜索</span>
                   <input value={query} onChange={(event) => setQuery(event.currentTarget.value)} />
                 </label>
                 <FiltersPanel filters={filters} onChange={setFilters} />
                 <div className="list-panel">
-                  {documents.map((document) => (
-                    <button
-                      key={document.path}
-                      className={
-                        document.path === selectedPath ? "list-row is-active" : "list-row"
-                      }
-                      onClick={() => setSelectedPath(document.path)}
-                      type="button"
-                    >
-                      <strong>{document.title}</strong>
-                      <span>
-                        {document.type} · {document.status}
-                      </span>
-                      <code>{document.path}</code>
-                    </button>
-                  ))}
+                  {documents.length ? (
+                    documents.map((document) => (
+                      <button
+                        key={document.path}
+                        className={
+                          document.path === selectedPath ? "list-row is-active" : "list-row"
+                        }
+                        onClick={() => setSelectedPath(document.path)}
+                        type="button"
+                      >
+                        <strong>{document.title}</strong>
+                        <span>
+                          {document.type} · {document.status}
+                        </span>
+                        <code>{document.path}</code>
+                      </button>
+                    ))
+                  ) : (
+                    <article className="empty-state">
+                      <span className="eyebrow">EMPTY VIEW</span>
+                      <h4>当前视图没有文档结果</h4>
+                      <p>试试清空筛选条件，或者直接去创建一篇新文档。</p>
+                    </article>
+                  )}
                 </div>
               </section>
               <DocumentEditor document={detail} onSave={handleSave} />

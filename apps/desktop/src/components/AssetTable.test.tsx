@@ -3,6 +3,13 @@ import type { AssetRecord } from "../lib/types";
 import { AssetTable } from "./AssetTable";
 
 describe("AssetTable", () => {
+  it("renders an empty state when no assets are visible", () => {
+    render(<AssetTable assets={[]} />);
+
+    expect(screen.getByText("当前筛选下没有资源")).toBeInTheDocument();
+    expect(screen.getByText("可以切换作用域，或者去右侧导入新的仓库资源与项目资源。")).toBeInTheDocument();
+  });
+
   it("renders sha256 for assets", () => {
     const assets: AssetRecord[] = [
       {
