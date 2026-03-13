@@ -17,10 +17,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -30,8 +48,52 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install desktop npm dependencies
+        run: cd apps/desktop && npm ci
+
       - name: Run repository tests
         run: make test
+
+  build-desktop:
+    name: Build Desktop
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install desktop npm dependencies
+        run: cd apps/desktop && npm ci
+
+      - name: Build desktop
+        run: make build-desktop
+
+      - name: Upload desktop frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kg-desktop-frontend
+          path: apps/desktop/dist
 
   build-go:
     name: Build Go (${{ matrix.goos }}-${{ matrix.goarch }})
@@ -150,6 +212,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - test
+      - build-desktop
       - build-go
       - build-rust
     runs-on: ubuntu-latest

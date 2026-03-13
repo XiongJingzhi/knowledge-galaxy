@@ -136,10 +136,12 @@ make build-desktop
 GitHub Actions 当前会执行以下流程：
 
 - 在推送到 `main` 和创建 `pull_request` 时运行 `make test`
+- 在 Ubuntu runner 上额外验证桌面端的前端构建与 Tauri Rust 后端构建
 - 构建 Go 与 Rust 的 macOS / Linux / Windows 二进制
 - 在每次推送到 `main` 时更新固定的 `Nightly` 预发布版本
 
 Nightly 预发布会同时包含 Go 和 Rust 的各平台产物，并使用语言前缀避免重名覆盖。
+当前 CI 还不会把桌面端 bundle 发布到 nightly release，桌面端构建目前仅用于回归验证。
 
 ## 直接入口
 
