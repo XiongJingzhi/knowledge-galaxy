@@ -134,6 +134,40 @@ describe("App", () => {
     expect(screen.getByText("试试清空筛选条件，或者直接去创建一篇新文档。")).toBeInTheDocument();
   });
 
+  it("switches to the create workbench with note preset from the documents hero", async () => {
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "新建 Note" }));
+
+    expect(await screen.findByText("创建中心")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("note")).toBeInTheDocument();
+  });
+
+  it("clears the current search and filters from the documents hero", async () => {
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.change(screen.getByLabelText("搜索"), {
+      target: { value: "search phrase" },
+    });
+    fireEvent.change(screen.getByLabelText("状态"), {
+      target: { value: "active" },
+    });
+
+    await screen.findByText("当前视图 · 搜索 “search phrase”");
+
+    fireEvent.click(screen.getByRole("button", { name: "重置视图" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("搜索")).toHaveValue("");
+      expect(screen.getByLabelText("状态")).toHaveValue("");
+    });
+    expect(screen.getByText("当前视图 · 全部文档")).toBeInTheDocument();
+  });
+
   it("runs project add-remote with the selected project and remote form values", async () => {
     render(<App />);
 

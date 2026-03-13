@@ -139,7 +139,10 @@ export function App() {
     }
     return cards;
   }, [assets.length, recentRepos.length, stats]);
-
+  const resetDocumentView = () => {
+    setQuery("");
+    setFilters({});
+  };
   const refreshOverview = async (repoPath?: string) => {
     try {
       const summary = await selectRepo(repoPath);
@@ -271,6 +274,93 @@ export function App() {
     }
   };
 
+  const sectionHero = useMemo(() => {
+    if (section === "documents") {
+      return {
+        eyebrow: "DOCUMENT WORKBENCH",
+        title: "围绕当前知识切片组织你的阅读与编辑",
+        description:
+          "先用搜索和过滤缩小范围，再从这里进入创建或回到全量视图，保持工作台聚焦而不是散乱地翻找。",
+        actions: [
+          {
+            label: "新建 Note",
+            kind: "primary" as const,
+            onClick: () => {
+              setCreateForm((current) => ({ ...current, type: "note" }));
+              setSection("create");
+            },
+          },
+          {
+            label: "重置视图",
+            kind: "ghost" as const,
+            onClick: resetDocumentView,
+          },
+        ],
+      };
+    }
+    if (section === "create") {
+      return {
+        eyebrow: "CREATE CENTER",
+        title: "把新知识快速落到正确的模板与路径里",
+        description:
+          "创建中心沿用现有 Python CLI 规则，适合集中补写 daily、note、review 与 project，而不需要切回终端。",
+        actions: [
+          {
+            label: "返回文档",
+            kind: "ghost" as const,
+            onClick: () => setSection("documents"),
+          },
+        ],
+      };
+    }
+    if (section === "assets") {
+      return {
+        eyebrow: "ASSET CENTER",
+        title: "把仓库级与项目级资源放到同一张资产台账里",
+        description:
+          "这里适合核对资源作用域、项目归属与摘要指纹，再决定是否继续导入新的文件。",
+        actions: [
+          {
+            label: "查看全部资源",
+            kind: "ghost" as const,
+            onClick: () => {
+              setAssetScope("all");
+              setAssetProjectFilter("");
+            },
+          },
+        ],
+      };
+    }
+    if (section === "ops") {
+      return {
+        eyebrow: "OPS CENTER",
+        title: "把校验、导出和快照整理成一套可回看的操作流",
+        description:
+          "校验结果和导出快照都会回流到同一工作台，适合在发布前快速检查知识库的当前状态。",
+        actions: [
+          {
+            label: "快速校验",
+            kind: "primary" as const,
+            onClick: () => void handleValidate(),
+          },
+        ],
+      };
+    }
+    return {
+      eyebrow: "PROJECT BRIDGE",
+      title: "把知识库中的项目条目与真实代码仓库联动起来",
+      description:
+        "项目工作台负责远端联接、同步和推送，保留原始命令输出，适合作为知识与代码之间的桥面。",
+      actions: [
+        {
+          label: "返回文档",
+          kind: "ghost" as const,
+          onClick: () => setSection("documents"),
+        },
+      ],
+    };
+  }, [section, handleValidate]);
+
   return (
     <div className="app-shell">
       <Sidebar section={section} onChange={setSection} />
@@ -347,6 +437,25 @@ export function App() {
               )}
             </div>
           </section>
+          <section className="section-hero">
+            <div className="section-hero__body">
+              <span className="eyebrow">{sectionHero.eyebrow}</span>
+              <h3>{sectionHero.title}</h3>
+              <p>{sectionHero.description}</p>
+            </div>
+            <div className="section-hero__actions">
+              {sectionHero.actions.map((action) => (
+                <button
+                  key={action.label}
+                  className={action.kind === "primary" ? "primary-button" : "ghost-button"}
+                  type="button"
+                  onClick={action.onClick}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </section>
           {section === "documents" ? (
             <div className="content-grid">
               <section className="panel">
@@ -397,7 +506,7 @@ export function App() {
           {section === "create" ? (
             <section className="panel panel--form">
               <div className="panel__header">
-                <h3>创建文档</h3>
+                <h3>创建中心</h3>
                 <span>调用现有 Python CLI</span>
               </div>
               <div className="form-grid">

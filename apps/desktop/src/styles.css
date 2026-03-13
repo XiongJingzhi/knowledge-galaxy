@@ -246,6 +246,67 @@ button {
     var(--panel-strong);
 }
 
+.section-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto;
+  gap: 20px;
+  align-items: end;
+  padding: 24px 26px;
+  border-radius: 30px;
+  border: 1px solid rgba(180, 79, 43, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(180, 79, 43, 0.18), transparent 22%),
+    linear-gradient(160deg, rgba(255, 251, 245, 0.94), rgba(247, 238, 227, 0.88));
+  box-shadow: var(--shadow-deep);
+  position: relative;
+  overflow: hidden;
+}
+
+.section-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -36px -48px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+}
+
+.section-hero__body,
+.section-hero__actions {
+  position: relative;
+  z-index: 1;
+}
+
+.section-hero__body {
+  display: grid;
+  gap: 8px;
+}
+
+.section-hero__body h3 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  letter-spacing: -0.04em;
+  max-width: 16ch;
+}
+
+.section-hero__body p {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.section-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
 .activity-feed__list {
   display: grid;
   gap: 12px;
@@ -581,6 +642,7 @@ pre {
 
 @media (max-width: 1180px) {
   .app-shell,
+  .section-hero,
   .content-grid,
   .editor-grid {
     grid-template-columns: 1fr;
@@ -589,5 +651,9 @@ pre {
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .section-hero__actions {
+    justify-content: flex-start;
   }
 }
