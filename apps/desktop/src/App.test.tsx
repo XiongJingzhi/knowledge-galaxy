@@ -125,4 +125,48 @@ describe("App", () => {
       });
     });
   });
+
+  it("creates a note with inline body from the create workbench", async () => {
+    mockedApi.createDocument.mockResolvedValue({ path: "notes/ship-note.md" });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+    fireEvent.change(screen.getByLabelText("标题"), {
+      target: { value: "Ship Note" },
+    });
+    fireEvent.change(screen.getByLabelText("正文"), {
+      target: { value: "Captured from desktop." },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "创建文档" }));
+
+    await waitFor(() => {
+      expect(mockedApi.createDocument).toHaveBeenCalledWith("note", {
+        type: "note",
+        title: "Ship Note",
+        date: "",
+        gitWorktree: "",
+        body: "Captured from desktop.",
+      });
+    });
+  });
+
+  it("renders export content after running an export action", async () => {
+    mockedApi.runExport.mockResolvedValue({
+      kind: "manifest",
+      content: '{\n  "total": 2\n}',
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
+    fireEvent.click(screen.getByRole("button", { name: "导出 manifest" }));
+
+    expect(await screen.findByText(/"total": 2/)).toBeInTheDocument();
+  });
 });
