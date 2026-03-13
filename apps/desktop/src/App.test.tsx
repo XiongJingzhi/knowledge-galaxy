@@ -207,6 +207,46 @@ describe("App", () => {
     });
   });
 
+  it("runs document search when typing a query", async () => {
+    mockedApi.searchDocuments.mockResolvedValue([
+      {
+        path: "notes/search-hit.md",
+        title: "Search Hit",
+        type: "note",
+        status: "active",
+      },
+    ]);
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.change(screen.getByLabelText("搜索"), {
+      target: { value: "search phrase" },
+    });
+
+    await waitFor(() => {
+      expect(mockedApi.searchDocuments).toHaveBeenCalledWith("search phrase", {});
+    });
+    expect(await screen.findByText("Search Hit")).toBeInTheDocument();
+  });
+
+  it("re-queries document list when a status filter changes", async () => {
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.change(screen.getByLabelText("状态"), {
+      target: { value: "active" },
+    });
+
+    await waitFor(() => {
+      expect(mockedApi.listDocuments).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: "active" }),
+      );
+    });
+  });
+
   it("imports an asset with project and target name from the asset workbench", async () => {
     mockedApi.importAsset.mockResolvedValue({
       path: "projects/atlas/assets/hero.png",
