@@ -1,4 +1,4 @@
-.PHONY: build build-go build-rust build-go-cross build-rust-cross test test-python test-go test-rust all clean
+.PHONY: build build-go build-rust build-desktop build-go-cross build-rust-cross test test-python test-go test-rust test-desktop all clean
 
 BIN := bin/kg
 BIN_RS := bin/kg-rs
@@ -20,6 +20,11 @@ build-rust:
 	@# cargo places the binary under implementations/rust/kg/target/release/kg
 	@cp implementations/rust/kg/target/release/kg $(BIN_RS) || true
 	@echo Built $(BIN_RS)
+
+build-desktop:
+	cd apps/desktop && npm run build
+	cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml
+	@echo Built desktop frontend and Tauri backend
 
 build-go-cross:
 	@mkdir -p $(DIST_DIR)
@@ -51,7 +56,7 @@ build-rust-cross:
 		cp "$$src" "$$out"; \
 	done
 
-test: test-python test-go test-rust
+test: test-python test-go test-rust test-desktop
 
 test-python:
 	python3 -m unittest \
@@ -70,7 +75,11 @@ test-rust:
 	cargo +stable test --manifest-path implementations/rust/kg/Cargo.toml
 	python3 -m unittest tests.test_rust_cli_behavior -v
 
-all: build build-rust test
+test-desktop:
+	cd apps/desktop && npm test
+	cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+all: build build-rust build-desktop test
 
 clean:
 	rm -rf bin $(DIST_DIR)

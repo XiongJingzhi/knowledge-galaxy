@@ -1,5 +1,7 @@
 bin/
 dist/
+**/dist/
+**/node_modules/
 indexes/
 **/target/
 **/__pycache__/

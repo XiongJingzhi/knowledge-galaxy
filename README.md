@@ -7,6 +7,8 @@ Knowledge Galaxy 是一个多实现版本并存的 `kg` CLI 仓库。
 ## 仓库结构
 
 ```text
+apps/
+  desktop
 implementations/
   go/kg
   python/kg
@@ -27,6 +29,7 @@ README.md
 - `implementations/python/kg`：Python CLI，实现最完整、文档也最完整
 - `implementations/go/kg`：Go CLI，实现与 Python 保持同一套 1.0 命令面
 - `implementations/rust/kg`：Rust CLI，实现与 Python 保持同一套 1.0 命令面
+- `apps/desktop`：基于 Tauri 的桌面工作台，首版通过 Python CLI bridge 操作知识库
 - `docs/`：规格、需求、任务和历史计划文档
 - `templates/`：仓库级模板目录，CLI 会优先读取外部仓库模板，缺失时回退到内置模板
 - `tests/`：仓库级测试，包含 Python 单测以及 Go / Rust 行为测试
@@ -37,6 +40,7 @@ README.md
 ## 环境要求
 
 - Python 3
+- Node.js / npm
 - Go
 - Rust / Cargo
 
@@ -64,6 +68,15 @@ README.md
 - `project fetch`
 - `project push`
 - `project sync`
+
+桌面端当前也已具备以下管理界面：
+
+- 文档浏览、过滤、搜索
+- Markdown 文档详情编辑与保存
+- 文档创建中心
+- 资源导入与 `asset-list` 浏览
+- 校验与导出面板
+- 项目远端操作面板
 
 ## 默认知识仓库
 
@@ -98,6 +111,7 @@ make test
 make test-python
 make test-go
 make test-rust
+make test-desktop
 ```
 
 ## 构建
@@ -109,10 +123,13 @@ make build-go
 make build-rust
 make build-go-cross
 make build-rust-cross
+make build-desktop
 ```
 
 跨平台构建产物会输出到 `dist/` 目录。
 本地临时构建产物会输出到 `bin/` 目录。
+
+桌面端前端构建产物会输出到 `apps/desktop/dist/`，Tauri Rust 构建产物位于 `apps/desktop/src-tauri/target/`。
 
 ## CI 与发布
 
@@ -145,6 +162,16 @@ cd implementations/go/kg && go build ./cmd/kg
 cd implementations/rust/kg && cargo build
 ./target/debug/kg --help
 ```
+
+### Desktop
+
+```bash
+cd apps/desktop
+npm install
+npm run tauri dev
+```
+
+桌面端说明请参考 `apps/desktop/README.md`。
 
 ## 常用示例
 
@@ -240,6 +267,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo project sync -
 - `docs/requirements/knowledge-galaxy-1.0.md`：产品边界与设计目标
 - `docs/tasks/knowledge-galaxy-1.0-tasks.md`：任务完成状态
 - `docs/specs/documentation-governance.md`：文档治理规范
+- `apps/desktop/README.md`：桌面端开发与运行说明
 
 `docs/plans/` 下的历史文档可能仍会提到旧路径，例如 `scripts/kg`、`cmd/kg`、`packages/rust`。这些内容应视为历史记录，不应当作当前使用说明。
 

@@ -8,6 +8,8 @@
 ## 顶层结构
 
 ```text
+apps/
+  desktop
 implementations/
   go/kg
   python/kg
@@ -30,6 +32,7 @@ README.md
 - `implementations/python/kg`：Python `kg` CLI 包，也是 `python3 -m implementations.python.kg` 的标准入口
 - `implementations/go/kg`：Go 实现根目录，包含 Go module 与 `cmd/kg`
 - `implementations/rust/kg`：Rust crate 根目录
+- `apps/desktop`：Tauri 桌面应用根目录，前端为 React + TypeScript，后端通过 Python CLI bridge 调用现有命令
 
 ## 仓库级共享资源
 
@@ -39,6 +42,8 @@ README.md
 - `scripts/dev/`：仅保留仓库级开发辅助脚本
 - `bin/`：本地构建输出目录，不纳入 Git
 - `dist/`：跨平台构建输出目录，不纳入 Git
+- `apps/desktop/dist/`：桌面端前端构建产物目录，不纳入 Git
+- `apps/desktop/src-tauri/target/`：桌面端 Tauri Rust 构建输出目录，不纳入 Git
 
 ## 标准命令入口
 
@@ -64,6 +69,14 @@ cd implementations/rust/kg && cargo build
 
 ```bash
 make test
+```
+
+### 桌面端
+
+```bash
+cd apps/desktop
+npm install
+npm run tauri dev
 ```
 
 ## 默认知识仓库
