@@ -79,6 +79,12 @@ describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     arrangeApi();
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
   });
 
   it("switches repository when clicking a recent repo entry", async () => {
@@ -168,6 +174,51 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "导出 manifest" }));
 
     expect(await screen.findByText(/"total": 2/)).toBeInTheDocument();
+  });
+
+  it("copies exported content to the clipboard", async () => {
+    mockedApi.runExport.mockResolvedValue({
+      kind: "manifest",
+      content: '{\n  "total": 2\n}',
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
+    fireEvent.click(screen.getByRole("button", { name: "导出 manifest" }));
+    await screen.findByText(/"total": 2/);
+
+    fireEvent.click(screen.getByRole("button", { name: "复制导出内容" }));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('{\n  "total": 2\n}');
+    });
+  });
+
+  it("saves exported content to a local file", async () => {
+    mockedApi.runExport.mockResolvedValue({
+      kind: "asset-list",
+      content: '[\n  {\n    "path": "assets/logo.png"\n  }\n]',
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
+    fireEvent.click(screen.getByRole("button", { name: "导出 asset-list" }));
+    await screen.findByText(/assets\/logo\.png/);
+
+    fireEvent.click(screen.getByRole("button", { name: "另存为文件" }));
+
+    await waitFor(() => {
+      expect(mockedApi.saveExportToFile).toHaveBeenCalledWith(
+        "asset-list.json",
+        '[\n  {\n    "path": "assets/logo.png"\n  }\n]',
+      );
+    });
   });
 
   it("saves edited document details from the document workbench", async () => {
