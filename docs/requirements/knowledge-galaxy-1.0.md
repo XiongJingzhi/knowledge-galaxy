@@ -1,565 +1,271 @@
-# Knowledge Galaxy 1.0 Requirements
+# Knowledge Galaxy 1.0 需求说明
 
-## 1. Product Vision
+## 1. 产品愿景
 
-### 1.1 Personal Knowledge Disk For The AI Era
+### 1.1 AI 时代的个人知识磁盘
 
-Knowledge Galaxy aims to become a personal knowledge disk for the AI era.
+Knowledge Galaxy 的目标，是成为 AI 时代的个人知识磁盘。
 
-It stores a person's long-term accumulated knowledge, including:
+它要长期保存一个人持续积累的知识，包括：
 
-- ideas
-- decisions
-- project experience
-- research material
-- reviews
-- daily records
-- curated external knowledge
+- 想法
+- 决策
+- 项目经验
+- 研究材料
+- 复盘
+- 日常记录
+- 外部资料整理
 
-The problem it solves is not how to generate knowledge, but how to preserve knowledge over time.
+它要解决的核心问题不是“如何生成知识”，而是“如何让知识长期保存、可演进、可被程序稳定读取”。
 
-### 1.2 Long-Term Goal
+### 1.2 长期目标
 
-The long-term goal of Knowledge Galaxy is to become the long-term memory layer for personal AI systems.
+Knowledge Galaxy 的长期目标，是成为个人 AI 系统的长期记忆层。
 
-Future AI systems may include:
+未来外部系统可能包括：
 
-- RAG systems
-- agent systems
-- automated research systems
-- personal decision systems
+- RAG 系统
+- agent 系统
+- 自动化研究系统
+- 个人决策系统
 
-These systems should be able to read from Knowledge Galaxy as a stable knowledge source.
+这些系统应当把 Knowledge Galaxy 当成稳定知识源来读取，而不是反过来要求 Knowledge Galaxy 内置这些能力。
 
-### 1.3 Product Positioning
+### 1.3 产品定位
 
-Knowledge Galaxy is not:
+Knowledge Galaxy 不是：
 
-- a note-taking application
-- a RAG tool
-- an AI chat system
-- a vector database
-- a knowledge graph platform
+- 笔记应用
+- RAG 工具
+- AI 聊天系统
+- 向量数据库
+- 知识图谱平台
 
-Knowledge Galaxy is a personal knowledge storage layer.
+Knowledge Galaxy 的定位是：个人知识存储层。
 
-## 2. System Boundary
+## 2. 系统边界
 
-### 2.1 In Scope
+### 2.1 范围内
 
-Knowledge Galaxy is responsible for:
+Knowledge Galaxy 负责：
 
-1. Knowledge storage  
-   Persist all knowledge as durable documents.
-2. Knowledge structure  
-   Represent relationships using directories and metadata.
-3. Knowledge indexing  
-   Provide structured indexes that can be queried.
-4. CLI operations  
-   Manage the knowledge base through a command-line interface.
-5. AI-consumable output  
-   Make stored knowledge easy for external systems to read.
+1. 知识存储
+   把知识保存为长期可维护的文档。
+2. 知识结构
+   使用目录和元数据表达关系。
+3. 知识索引
+   生成可查询的结构化索引。
+4. CLI 操作
+   通过命令行管理知识仓库。
+5. 面向 AI 的稳定输出
+   让外部系统容易读取已存储知识。
 
-### 2.2 Out Of Scope
+### 2.2 范围外
 
-Knowledge Galaxy does not handle:
+Knowledge Galaxy 当前不负责：
 
-- vectorization
+- 向量化
 - embeddings
 - chunking
-- RAG retrieval
-- AI reasoning
-- agent workflows
-- semantic search
+- RAG 检索
+- AI 推理
+- agent 编排
+- 语义搜索增强
 
-These capabilities belong to the AI application layer.
+这些能力属于上层 AI 应用。
 
-## 3. System Architecture
+## 3. 系统架构
 
-Knowledge Galaxy uses a three-layer architecture:
+Knowledge Galaxy 采用三层结构：
 
-Knowledge Storage Layer  
-down to  
-Knowledge Index Layer  
-down to  
-AI Application Layer
+1. 知识存储层
+2. 知识索引层
+3. AI 应用层
 
-### 3.1 Knowledge Storage Layer
+### 3.1 知识存储层
 
-The storage layer is the core of the system.
+存储层是系统核心，负责：
 
-It is responsible for:
+- 文档存储
+- 目录结构
+- 元数据表达
+- 资源目录保留
 
-- document storage
-- asset management
-- directory structure
-- metadata expression
+当前实现基础：
 
-Implementation basis:
-
-- Git repository
-- Markdown documents
+- Git 仓库
+- Markdown 文档
 - YAML frontmatter
 
-### 3.2 Knowledge Index Layer
+### 3.2 知识索引层
 
-The index layer is a derived query layer generated from the storage layer.
+索引层是从存储层派生出来的查询层。
 
-It provides:
+它负责提供：
 
-- SQL queries
-- tag retrieval
-- document filtering
-- full-text search
-- statistics
+- 文档列表
+- 基本文本搜索
+- 统计输出
+- 面向程序消费的结构化读取能力
 
-Implementation basis:
+当前实现说明：
 
-- local SQLite database
+- Python：使用 SQLite 维护本地索引
+- Go / Rust：当前通过扫描文档即时完成查询
 
-The index layer is derived data, not the source of truth.
+索引层是派生数据，不是事实来源。
 
-### 3.3 AI Application Layer
+### 3.3 AI 应用层
 
-The AI application layer is implemented by external systems, such as:
+AI 应用层由外部系统实现，例如：
 
 - Milvus
 - RAGFlow
 - LangChain
 - LlamaIndex
-- agent systems
+- 各类 agent 系统
 
-These systems consume data produced by Knowledge Galaxy.
+这些系统消费 Knowledge Galaxy 输出的数据，而不是要求 Knowledge Galaxy 内置它们的运行逻辑。
 
-## 4. Core Design Principles
+## 4. 核心设计原则
 
-### 4.1 Git Is The Source Of Truth
+### 4.1 Git 是事实来源
 
-All knowledge is stored in a Git repository.
+所有知识最终都应保存在 Git 仓库中。
 
-Benefits:
+这样可以获得：
 
-- traceable versions
-- comparable history
-- auditable changes
-- portable data
+- 可追踪版本
+- 可比较历史
+- 可审计变更
+- 可迁移数据
 
-### 4.2 File First
+### 4.2 文件优先
 
-The basic unit of knowledge is a document, not:
+知识的基本单元是文档文件，而不是：
 
-- a block
-- a chunk
-- a database row
+- block
+- chunk
+- 数据库行
 
-### 4.3 CLI First
+### 4.3 CLI 优先
 
-The CLI is the primary interface.
+CLI 是当前产品的主入口。
 
-The CLI should support:
+截至 2026-03-13，当前已实现的 CLI 能力包括：
 
-- document creation
-- content writing
-- asset import
-- data querying
-- structure validation
-- index export
+- 文档创建
+- 内容捕获
+- 查询
+- 核心校验
+- 项目远端操作
 
-Current implementation note on 2026-03-13:
+当前尚未实现的能力包括：
 
-- implemented now: document creation, content capture, query, and core validation
-- not implemented yet: asset import, export workflows, and reference/asset validation
+- 资源导入
+- 导出工作流
+- `reference` / `asset` 校验
 
-当前实现状态说明（2026-03-13）：
+GUI 如果存在，也应当只是 CLI 之上的展示层。
 
-- 已实现：文档创建、内容捕获、查询、核心校验
-- 尚未实现：资源导入、导出工作流、reference/asset 校验
+### 4.4 稳定结构
 
-GUI is only a visualization layer over CLI capabilities.
+系统应长期围绕少量稳定概念组织：
 
-### 4.4 Stable Structure
-
-The system uses a small set of long-lived concepts:
-
-- Theme
-- Project
 - Daily
 - Note
+- Decision
+- Review
+- Project
 
-These concepts should remain stable over time.
+`Theme` 和 `Reference` 保留为结构层概念，但当前还不属于已经完整实现的命令面。
 
-### 4.5 Human Readable
+### 4.5 人类可读
 
-The knowledge system must remain:
+知识系统必须保持：
 
-- readable
-- maintainable
-- understandable
+- 可读
+- 可维护
+- 可理解
 
-Overly complex data structures should be avoided.
+不应为了自动化而引入过于复杂的数据结构。
 
-### 4.6 AI Friendly
+### 4.6 对 AI 友好
 
-The structure must provide:
+结构需要提供：
 
-- clear boundaries
-- explicit metadata
-- stable semantics
-- unified paths
+- 清晰边界
+- 显式元数据
+- 稳定语义
+- 统一路径规则
 
-This allows AI systems to parse knowledge reliably.
+这样外部 AI 系统才可以稳定解析。
 
-## 5. Core Concepts
+## 5. 核心概念
 
 ### 5.1 Note
 
-Note is the most basic object in the system.
+Note 是最基本的知识对象，用于表达可以独立成文的内容，例如：
 
-It represents a knowledge document that can independently express meaning, for example:
-
-- ideas
-- explanations
-- decisions
-- research records
-- summaries
+- 想法
+- 解释
+- 研究记录
+- 总结
 
 ### 5.2 Daily
 
-Daily is the time-based entry point.
+Daily 是时间维度入口，用于记录每天的：
 
-It records daily:
+- 事件
+- 输入
+- 想法
+- 决策
+- 行动
 
-- events
-- inputs
-- ideas
-- decisions
-- actions
+当前实现支持向 daily 直接追加带时间戳的捕获块。
 
-Daily gives knowledge a time dimension.
+### 5.3 Decision
 
-### 5.3 Theme
+Decision 用于保存重要决策及其背景，避免未来失去上下文。
 
-Theme represents a long-lived knowledge domain, such as:
+### 5.4 Review
 
-- investing
-- health
-- ai-factory
-- knowledge-galaxy
+Review 用于保存周期性复盘和阶段总结。
 
-The number of themes should remain relatively small.
+### 5.5 Project
 
-### 5.4 Project
+Project 表示行动空间。Knowledge Galaxy 中的项目文档可以绑定一个外部 git 工作目录，并执行：
 
-Project represents an action space, such as:
+- `add-remote`
+- `fetch`
+- `push`
+- `sync`
 
-- knowledge-galaxy
-- compound
-- research-x
+## 6. 当前 1.0 需求落地状态
 
-Project connects knowledge to execution.
+截至 2026-03-13，当前代码已经满足的 1.0 需求包括：
 
-## 6. Knowledge Document Structure
+- 支持 Python / Go / Rust 三种 CLI 并行实现
+- 未传 `--repo` 时默认使用 `~/.knowledge-galax`
+- 默认仓库不存在时自动创建基础目录
+- 支持 `create daily/note/decision/review/project`
+- 支持 `append daily`
+- 支持 `create note --stdin`
+- 支持 `import clipboard note`
+- 支持 `validate / list / search / stats`
+- 支持项目远端操作
 
-All knowledge documents use a unified format:
+尚未完成的 1.0 需求：
 
-Markdown plus YAML frontmatter
+- 资源导入
+- 导出命令
+- `reference` / `asset` 校验
 
-### 6.1 Frontmatter Fields
+## 7. 文档要求
 
-Primary fields include:
+需求文档必须始终区分两类内容：
 
-- `id`
-- `type`
-- `title`
-- `slug`
-- `created_at`
-- `updated_at`
-- `date`
-- `theme`
-- `project`
-- `tags`
-- `source`
-- `status`
-- `summary`
+- 当前代码已经实现的行为
+- 仍在计划中但尚未实现的行为
 
-### 6.2 Supported Document Types
-
-Knowledge Galaxy 1.0 supports:
-
-- `daily`
-- `note`
-- `thought`
-- `decision`
-- `review`
-- `reference`
-- `theme`
-- `project`
-
-### 6.3 Document Status
-
-Supported statuses:
-
-- `inbox`
-- `active`
-- `evergreen`
-- `archived`
-
-## 7. Directory Structure
-
-The repository uses a unified structure:
-
-```text
-knowledge-galaxy/
-  docs/
-  dailies/
-  notes/
-  decisions/
-  reviews/
-  references/
-  themes/
-  projects/
-  assets/
-  inbox/
-  indexes/
-  scripts/
-```
-
-### 7.1 docs
-
-The formal knowledge space. AI systems mainly consume content from this space and the repository structure it defines.
-
-### 7.2 dailies
-
-Daily records organized by time:
-
-`dailies/YYYY/MM/DD.md`
-
-### 7.3 notes
-
-General knowledge documents.
-
-### 7.4 decisions
-
-Important decisions.
-
-### 7.5 reviews
-
-Retrospectives and summaries.
-
-### 7.6 references
-
-Curated external materials.
-
-### 7.7 themes
-
-Theme anchor documents.
-
-### 7.8 projects
-
-Project workspaces. Each project is an independent directory.
-
-## 8. Asset Management
-
-All shared assets are stored in:
-
-`assets/`
-
-Assets may include:
-
-- images
-- PDFs
-- data files
-- webpage snapshots
-
-Benefits of a unified asset directory:
-
-- batch management
-- script processing
-- unused reference scanning
-
-### 8.1 Project Asset Exception
-
-Projects may use:
-
-`docs/projects/<project>/assets`
-
-for project-specific assets.
-
-## 9. Indexing And Query
-
-Knowledge Galaxy provides query capability through a derived layer synchronized from the Git repository.
-
-### 9.1 Query Layer
-
-The query layer is implemented with local SQLite.
-
-### 9.2 Structured Query
-
-Documents should be filterable by:
-
-- `theme`
-- `project`
-- `tag`
-- `type`
-- `status`
-- `date`
-
-### 9.3 Tag System
-
-Tags supplement document semantics.
-
-Tag rules:
-
-- lowercase
-- kebab-case
-- no spaces
-
-Examples:
-
-- `rag`
-- `milvus`
-- `weekly-review`
-- `asset-management`
-
-### 9.4 Full-Text Search
-
-Full-text search should be supported against document body content.
-
-### 9.5 Statistics
-
-The system should support statistics such as:
-
-- document count
-- theme distribution
-- tag frequency
-
-## 10. CLI Design
-
-The CLI tool name is:
-
-`kg`
-
-### 10.1 CLI Principles
-
-The CLI must be:
-
-- short
-- parseable
-- automation-friendly
-- scriptable
-
-### 10.2 Command Categories
-
-Create:
-
-- create `daily`
-- create `note`
-- create `decision`
-- create `review`
-
-Capture:
-
-- append to daily
-- create note from `stdin`
-- import from clipboard
-
-Asset management:
-
-- auto copy
-- auto rename
-- auto generate references
-
-Query:
-
-- `list`
-- `search`
-- `stats`
-
-Validation:
-
-- frontmatter
-- path
-- id
-- reference checks
-
-Export:
-
-- document list
-- change list
-- manifest
-
-Current runtime behavior:
-
-- If `--repo` is omitted, the CLI defaults to `~/.knowledge-galax`.
-- Python, Go, and Rust all implement the same current create/capture/query/validation/project surface.
-- Asset-management and export commands remain planned rather than implemented.
-
-当前运行行为：
-
-- 如果省略 `--repo`，CLI 默认使用 `~/.knowledge-galax`
-- Python、Go、Rust 三种实现当前都覆盖同一组 create/capture/query/validation/project 命令面
-- 资源管理和导出命令仍处于计划中，尚未实现
-
-## 11. Knowledge Lifecycle
-
-The knowledge lifecycle is:
-
-capture  
-down to  
-inbox  
-down to  
-organize  
-down to  
-active  
-down to  
-evergreen  
-down to  
-archived
-
-## 12. Relationship With Milvus
-
-Milvus is a vector database.
-
-Knowledge Galaxy does not directly use Milvus.
-
-However, the document structure should be easy to transform into:
-
-- vector records
-- metadata
-
-## 13. Relationship With RAGFlow
-
-RAGFlow is responsible for:
-
-- document parsing
-- chunking
-- embeddings
-- retrieval
-
-Knowledge Galaxy only serves as RAGFlow's knowledge source.
-
-## 14. 1.0 Goals
-
-Knowledge Galaxy 1.0 has four goals:
-
-1. Build a stable knowledge repository based on Git and Markdown.
-2. Build a clear knowledge structure around Theme, Project, Daily, and Note.
-3. Provide query capability through SQL, tags, and search.
-4. Support CLI-first operation for core workflows.
-
-## 15. Success Criteria
-
-Knowledge Galaxy 1.0 is successful when any RAG system only needs to:
-
-1. read the repository
-2. parse Markdown
-3. chunk content
-4. build indexes
-
-to construct a usable knowledge base.
-
-## 16. Summary
-
-Knowledge Galaxy is a personal knowledge disk for the AI era.
-
-It preserves knowledge rather than processing knowledge.
+不能把规划能力写成当前能力。
