@@ -715,13 +715,24 @@ func cmdList(repoRoot string, args []string) int {
 	status := fs.String("status", "", "status filter")
 	project := fs.String("project", "", "project filter")
 	date := fs.String("date", "", "date filter")
+	theme := fs.String("theme", "", "theme filter")
+	tag := fs.String("tag", "", "tag filter")
+	source := fs.String("source", "", "source filter")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}
 	idx := buildIndex(repoRoot)
 	for _, d := range idx {
-		if !matchesQueryFilters(d, *typ, *status, *project, *date) {
+		if !matchesQueryFilters(d, queryFilters{
+			typ:     *typ,
+			status:  *status,
+			project: *project,
+			date:    *date,
+			theme:   *theme,
+			tag:     *tag,
+			source:  *source,
+		}) {
 			continue
 		}
 		fmt.Printf("%s\t%s\t%s\n", d.Type, d.Title, d.Path)
@@ -763,6 +774,27 @@ func cmdSearch(repoRoot string, args []string) int {
 			}
 			filters.typ = args[i+1]
 			i += 2
+		case "--theme":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "flag needs an argument: --theme")
+				return 1
+			}
+			filters.theme = args[i+1]
+			i += 2
+		case "--tag":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "flag needs an argument: --tag")
+				return 1
+			}
+			filters.tag = args[i+1]
+			i += 2
+		case "--source":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "flag needs an argument: --source")
+				return 1
+			}
+			filters.source = args[i+1]
+			i += 2
 		default:
 			if query == "" {
 				query = args[i]
@@ -780,7 +812,7 @@ func cmdSearch(repoRoot string, args []string) int {
 	q := strings.ToLower(query)
 	idx := buildIndex(repoRoot)
 	for _, d := range idx {
-		if !matchesQueryFilters(d, filters.typ, filters.status, filters.project, filters.date) {
+		if !matchesQueryFilters(d, filters) {
 			continue
 		}
 		if strings.Contains(strings.ToLower(d.Title), q) || strings.Contains(strings.ToLower(d.Summary), q) || strings.Contains(strings.ToLower(d.Body), q) {
@@ -1047,19 +1079,31 @@ type queryFilters struct {
 	status  string
 	project string
 	date    string
+	theme   string
+	tag     string
+	source  string
 }
 
-func matchesQueryFilters(d Document, typ, status, project, date string) bool {
-	if typ != "" && d.Type != typ {
+func matchesQueryFilters(d Document, filters queryFilters) bool {
+	if filters.typ != "" && d.Type != filters.typ {
 		return false
 	}
-	if status != "" && d.Status != status {
+	if filters.status != "" && d.Status != filters.status {
 		return false
 	}
-	if project != "" && !inSet(project, d.Project) {
+	if filters.project != "" && !inSet(filters.project, d.Project) {
 		return false
 	}
-	if date != "" && d.Date != date {
+	if filters.date != "" && d.Date != filters.date {
+		return false
+	}
+	if filters.theme != "" && !inSet(filters.theme, d.Theme) {
+		return false
+	}
+	if filters.tag != "" && !inSet(filters.tag, d.Tags) {
+		return false
+	}
+	if filters.source != "" && !inSet(filters.source, d.Source) {
 		return false
 	}
 	return true

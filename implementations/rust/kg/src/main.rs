@@ -972,6 +972,9 @@ struct QueryFilters {
     status: Option<String>,
     project: Option<String>,
     date: Option<String>,
+    theme: Option<String>,
+    tag: Option<String>,
+    source: Option<String>,
 }
 
 fn cmd_validate(repo_root: &Path) -> i32 {
@@ -1006,6 +1009,18 @@ fn cmd_list(repo_root: &Path, args: &[String]) -> i32 {
             }
             "--date" if i + 1 < args.len() => {
                 filters.date = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--theme" if i + 1 < args.len() => {
+                filters.theme = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--tag" if i + 1 < args.len() => {
+                filters.tag = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--source" if i + 1 < args.len() => {
+                filters.source = Some(args[i + 1].clone());
                 i += 2;
             }
             _ => {
@@ -1047,6 +1062,18 @@ fn cmd_search(repo_root: &Path, args: &[String]) -> i32 {
             }
             "--type" if i + 1 < args.len() => {
                 filters.type_ = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--theme" if i + 1 < args.len() => {
+                filters.theme = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--tag" if i + 1 < args.len() => {
+                filters.tag = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--source" if i + 1 < args.len() => {
+                filters.source = Some(args[i + 1].clone());
                 i += 2;
             }
             value if !value.starts_with("--") && query.is_none() => {
@@ -1337,6 +1364,27 @@ fn matches_query_filters(doc: &Document, filters: &QueryFilters) -> bool {
         return false;
     }
     if filters.date.as_ref().is_some_and(|value| doc.date != *value) {
+        return false;
+    }
+    if filters
+        .theme
+        .as_ref()
+        .is_some_and(|value| !doc.theme.iter().any(|entry| entry == value))
+    {
+        return false;
+    }
+    if filters
+        .tag
+        .as_ref()
+        .is_some_and(|value| !doc.tags.iter().any(|entry| entry == value))
+    {
+        return false;
+    }
+    if filters
+        .source
+        .as_ref()
+        .is_some_and(|value| !doc.source.iter().any(|entry| entry == value))
+    {
         return false;
     }
     true

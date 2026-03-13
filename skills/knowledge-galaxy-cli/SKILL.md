@@ -153,6 +153,7 @@ OK
 python3 -m implementations.python.kg --repo /path/to/content-repo list
 python3 -m implementations.python.kg --repo /path/to/content-repo list --type note
 python3 -m implementations.python.kg --repo /path/to/content-repo list --status active --project atlas
+python3 -m implementations.python.kg --repo /path/to/content-repo list --theme knowledge --tag mvp
 ```
 
 ### 搜索文档
@@ -160,6 +161,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo list --status 
 ```bash
 python3 -m implementations.python.kg --repo /path/to/content-repo search idea
 python3 -m implementations.python.kg --repo /path/to/content-repo search review --date 2026-03-12
+python3 -m implementations.python.kg --repo /path/to/content-repo search idea --source field-notes
 ```
 
 当前 `list` / `search` 已支持：
@@ -167,6 +169,9 @@ python3 -m implementations.python.kg --repo /path/to/content-repo search review 
 - `--status`
 - `--project`
 - `--date`
+- `--theme`
+- `--tag`
+- `--source`
 - `list` 额外支持 `--type`
 
 ### 查看统计

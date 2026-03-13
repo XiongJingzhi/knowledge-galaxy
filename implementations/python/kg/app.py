@@ -112,12 +112,18 @@ def build_parser() -> argparse.ArgumentParser:
     list_parser.add_argument("--status")
     list_parser.add_argument("--project")
     list_parser.add_argument("--date")
+    list_parser.add_argument("--theme")
+    list_parser.add_argument("--tag")
+    list_parser.add_argument("--source")
 
     search_parser = subparsers.add_parser("search")
     search_parser.add_argument("query")
     search_parser.add_argument("--status")
     search_parser.add_argument("--project")
     search_parser.add_argument("--date")
+    search_parser.add_argument("--theme")
+    search_parser.add_argument("--tag")
+    search_parser.add_argument("--source")
 
     subparsers.add_parser("stats")
     subparsers.add_parser("validate")
@@ -396,6 +402,15 @@ def run_list(connection: sqlite3.Connection, args: argparse.Namespace) -> int:
     if args.date:
         where_clauses.append("date = ?")
         parameters.append(args.date)
+    if args.theme:
+        where_clauses.append("theme LIKE ?")
+        parameters.append(f'%"{args.theme}"%')
+    if args.tag:
+        where_clauses.append("tags LIKE ?")
+        parameters.append(f'%"{args.tag}"%')
+    if args.source:
+        where_clauses.append("source LIKE ?")
+        parameters.append(f'%"{args.source}"%')
     if where_clauses:
         query += f" WHERE {' AND '.join(where_clauses)}"
     query += " ORDER BY path"
@@ -420,6 +435,15 @@ def run_search(connection: sqlite3.Connection, args: argparse.Namespace) -> int:
     if args.date:
         where_clauses.append("date = ?")
         parameters.append(args.date)
+    if args.theme:
+        where_clauses.append("theme LIKE ?")
+        parameters.append(f'%"{args.theme}"%')
+    if args.tag:
+        where_clauses.append("tags LIKE ?")
+        parameters.append(f'%"{args.tag}"%')
+    if args.source:
+        where_clauses.append("source LIKE ?")
+        parameters.append(f'%"{args.source}"%')
     rows = connection.execute(
         f"""
         SELECT type, title, path FROM documents

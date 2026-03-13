@@ -98,8 +98,10 @@ printf 'Captured for today\n' | ./target/debug/kg append daily
 ./target/debug/kg --repo /path/to/content-repo validate
 ./target/debug/kg --repo /path/to/content-repo list
 ./target/debug/kg --repo /path/to/content-repo list --status active --project atlas
+./target/debug/kg --repo /path/to/content-repo list --theme knowledge --tag mvp
 ./target/debug/kg --repo /path/to/content-repo search idea
 ./target/debug/kg --repo /path/to/content-repo search review --date 2026-03-12
+./target/debug/kg --repo /path/to/content-repo search idea --source field-notes
 ./target/debug/kg --repo /path/to/content-repo stats
 ./target/debug/kg --repo /path/to/content-repo export manifest
 ```

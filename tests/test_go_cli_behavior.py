@@ -163,9 +163,10 @@ slug: idea
 created_at: 2026-03-11T00:00:00Z
 updated_at: 2026-03-11T00:00:00Z
 status: active
-theme: []
+theme: ["knowledge"]
 project: ["atlas"]
-tags: []
+tags: ["idea", "mvp"]
+source: ["field-notes"]
 summary: ""
 ---
 
@@ -223,3 +224,12 @@ Review archive body
         self.assertEqual(search_result.returncode, 0, msg=search_result.stderr)
         self.assertIn("review\tWeekly\treviews/weekly.md", search_result.stdout)
         self.assertNotIn("Weekly Archive", search_result.stdout)
+
+        themed_result = self.run_go(["list", "--theme", "knowledge", "--tag", "mvp"])
+        self.assertEqual(themed_result.returncode, 0, msg=themed_result.stderr)
+        self.assertIn("note\tIdea\tnotes/idea.md", themed_result.stdout)
+        self.assertNotIn("Weekly", themed_result.stdout)
+
+        source_result = self.run_go(["search", "idea", "--source", "field-notes"])
+        self.assertEqual(source_result.returncode, 0, msg=source_result.stderr)
+        self.assertIn("note\tIdea\tnotes/idea.md", source_result.stdout)

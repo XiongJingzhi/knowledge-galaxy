@@ -22,7 +22,7 @@ class KGQueryTests(unittest.TestCase):
                 summary="Useful summary",
                 body="This idea should be searchable.",
                 status="active",
-                extra_fields='theme: ["knowledge"]\nproject: ["atlas"]\n',
+                extra_fields='theme: ["knowledge"]\nproject: ["atlas"]\nsource: ["field-notes"]\n',
             ),
         )
         self.repo.write_file(
@@ -113,6 +113,15 @@ class KGQueryTests(unittest.TestCase):
         output = self.run_cli("search", "idea", "--status", "active")
         self.assertIn("Idea Note", output)
 
+    def test_list_and_search_support_theme_tag_and_source_filters(self) -> None:
+        output = self.run_cli("list", "--theme", "knowledge", "--tag", "mvp")
+        self.assertIn("note\tIdea Note\tnotes/idea-note.md", output)
+        self.assertNotIn("Choose SQLite", output)
+
+        output = self.run_cli("search", "idea", "--source", "field-notes", "--theme", "knowledge")
+        self.assertIn("Idea Note", output)
+        self.assertNotIn("Weekly Review", output)
+
     def test_export_document_list_returns_json_rows(self) -> None:
         output = self.run_cli("export", "document-list")
 
@@ -186,7 +195,7 @@ slug: {slug}
 created_at: {created_at}
 updated_at: {updated_at}
 status: {status}
-{extra_fields}tags: []
+{extra_fields}tags: ["idea", "mvp"]
 summary: {summary}
 ---
 

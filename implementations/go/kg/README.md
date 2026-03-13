@@ -98,8 +98,10 @@ printf 'Captured for today\n' | ./kg append daily
 ./kg --repo /path/to/content-repo validate
 ./kg --repo /path/to/content-repo list
 ./kg --repo /path/to/content-repo list --status active --project atlas
+./kg --repo /path/to/content-repo list --theme knowledge --tag mvp
 ./kg --repo /path/to/content-repo search idea
 ./kg --repo /path/to/content-repo search review --date 2026-03-12
+./kg --repo /path/to/content-repo search idea --source field-notes
 ./kg --repo /path/to/content-repo stats
 ./kg --repo /path/to/content-repo export manifest
 ```

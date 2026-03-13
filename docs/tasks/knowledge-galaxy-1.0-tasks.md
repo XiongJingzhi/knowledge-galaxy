@@ -40,6 +40,7 @@
 - [x] 实现仓库到索引的同步
 - [x] 实现 `kg list`、`kg search`、`kg stats`
 - [x] 为 `list/search` 补齐 `status / project / date` 过滤能力
+- [x] 为 `list/search` 补齐 `theme / tag / source` 过滤能力
 - [x] 定义索引重建与导出行为
 
 ## 阶段 6：校验
