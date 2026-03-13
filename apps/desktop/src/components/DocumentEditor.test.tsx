@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { DocumentDetail } from "../lib/types";
 import { DocumentEditor } from "./DocumentEditor";
 
@@ -22,6 +22,15 @@ const detail: DocumentDetail = {
 };
 
 describe("DocumentEditor", () => {
+  beforeEach(() => {
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
   it("renders a guided empty state when no document is selected", () => {
     render(<DocumentEditor document={null} onSave={() => undefined} />);
 
@@ -42,5 +51,27 @@ describe("DocumentEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存文档" }));
 
     expect(saves[0].title).toBe("Idea Updated");
+  });
+
+  it("renders a dossier strip with core document metadata", () => {
+    render(<DocumentEditor document={detail} onSave={() => undefined} />);
+
+    expect(screen.getByText("文档档案")).toBeInTheDocument();
+    expect(screen.getByText("note")).toBeInTheDocument();
+    expect(screen.getAllByText("idea")).toHaveLength(2);
+    expect(screen.getAllByText("2026-03-13T00:00:00Z")).toHaveLength(2);
+    expect(screen.getByText("knowledge")).toBeInTheDocument();
+    expect(screen.getByText("atlas")).toBeInTheDocument();
+  });
+
+  it("copies the document path from the dossier strip", async () => {
+    render(<DocumentEditor document={detail} onSave={() => undefined} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "复制路径" }));
+
+    await waitFor(() => {
+      expect(globalThis.navigator.clipboard.writeText).toHaveBeenCalledWith("notes/idea.md");
+    });
+    expect(screen.getByRole("button", { name: "已复制路径" })).toBeInTheDocument();
   });
 });

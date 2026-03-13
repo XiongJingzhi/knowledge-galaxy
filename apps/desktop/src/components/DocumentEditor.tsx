@@ -21,10 +21,12 @@ export function DocumentEditor({
 }) {
   const [draft, setDraft] = useState<DocumentDetail | null>(document);
   const [dirty, setDirty] = useState(false);
+  const [copiedPath, setCopiedPath] = useState(false);
 
   useEffect(() => {
     setDraft(document);
     setDirty(false);
+    setCopiedPath(false);
   }, [document]);
 
   if (!draft) {
@@ -41,6 +43,19 @@ export function DocumentEditor({
     setDraft({ ...draft, ...next });
     setDirty(true);
   };
+  const dossierGroups = [
+    { label: "主题", values: draft.theme },
+    { label: "项目", values: draft.project },
+    { label: "标签", values: draft.tags },
+    { label: "来源", values: draft.source },
+  ];
+  const handleCopyPath = async () => {
+    if (!navigator.clipboard) {
+      return;
+    }
+    await navigator.clipboard.writeText(draft.path);
+    setCopiedPath(true);
+  };
 
   return (
     <section className="panel detail-panel">
@@ -51,11 +66,56 @@ export function DocumentEditor({
         </div>
         <div className="detail-panel__status">
           {dirty ? <span className="status-pill is-dirty">未保存变更</span> : null}
+          <button className="ghost-button" type="button" onClick={() => void handleCopyPath()}>
+            {copiedPath ? "已复制路径" : "复制路径"}
+          </button>
           <button type="button" onClick={() => draft && onSave(draft)}>
             保存文档
           </button>
         </div>
       </div>
+      <section className="dossier-strip">
+        <div className="dossier-strip__header">
+          <span className="eyebrow">文档档案</span>
+          <p>先确认文档身份、更新时间和关系标签，再进入 frontmatter 与正文编辑。</p>
+        </div>
+        <div className="dossier-strip__grid">
+          <article className="dossier-card">
+            <span className="dossier-card__label">类型</span>
+            <strong className="dossier-card__value">{draft.type}</strong>
+          </article>
+          <article className="dossier-card">
+            <span className="dossier-card__label">Slug</span>
+            <strong className="dossier-card__value">{draft.slug}</strong>
+          </article>
+          <article className="dossier-card">
+            <span className="dossier-card__label">创建时间</span>
+            <strong className="dossier-card__value dossier-card__value--small">{draft.createdAt}</strong>
+          </article>
+          <article className="dossier-card">
+            <span className="dossier-card__label">更新时间</span>
+            <strong className="dossier-card__value dossier-card__value--small">{draft.updatedAt}</strong>
+          </article>
+        </div>
+        <div className="taxonomy-strip">
+          {dossierGroups.map((group) => (
+            <article key={group.label} className="taxonomy-strip__group">
+              <span className="taxonomy-strip__label">{group.label}</span>
+              <div className="taxonomy-strip__chips">
+                {group.values.length ? (
+                  group.values.map((value) => (
+                    <span key={`${group.label}-${value}`} className="taxonomy-chip">
+                      {value}
+                    </span>
+                  ))
+                ) : (
+                  <span className="taxonomy-chip taxonomy-chip--empty">未设置</span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
       <div className="detail-panel__meta">
         <label className="field">
           <span>标题</span>
