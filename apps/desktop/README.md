@@ -15,7 +15,7 @@
 - 文档浏览：列表、搜索、按 `type/status/project/date/theme/tag/source` 过滤
 - 文档编辑：frontmatter 字段编辑、Markdown 正文编辑与预览
 - 创建中心：`daily / note / decision / review / project`
-- 资源中心：查看 `asset-list`，导入仓库级或项目级资源
+- 资源中心：查看 `asset-list`，按仓库级/项目级切换浏览，并导入仓库级或项目级资源
 - 校验与导出：`validate`、`document-list`、`manifest`、`change-list`、`asset-list`
 - 项目操作：`add-remote`、`fetch`、`push`、`sync`
 

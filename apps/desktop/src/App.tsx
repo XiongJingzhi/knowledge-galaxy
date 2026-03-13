@@ -78,6 +78,8 @@ export function App() {
     targetName: "",
     project: "",
   });
+  const [assetScope, setAssetScope] = useState<"all" | "repo" | "project">("all");
+  const [assetProjectFilter, setAssetProjectFilter] = useState("");
   const [remoteForm, setRemoteForm] = useState({
     name: "origin",
     url: "",
@@ -350,7 +352,43 @@ export function App() {
 
           {section === "assets" ? (
             <div className="content-grid">
-              <AssetTable assets={assets} />
+              <div className="panel-stack">
+                <section className="panel">
+                  <div className="panel__header">
+                    <h3>资源过滤</h3>
+                    <span>按作用域查看</span>
+                  </div>
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>作用域</span>
+                      <select
+                        value={assetScope}
+                        onChange={(event) =>
+                          setAssetScope(event.currentTarget.value as "all" | "repo" | "project")
+                        }
+                      >
+                        <option value="all">全部</option>
+                        <option value="repo">仓库级</option>
+                        <option value="project">项目级</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>项目 slug</span>
+                      <input
+                        value={assetProjectFilter}
+                        onChange={(event) => setAssetProjectFilter(event.currentTarget.value)}
+                        placeholder="仅项目级过滤时生效"
+                        disabled={assetScope !== "project"}
+                      />
+                    </label>
+                  </div>
+                </section>
+                <AssetTable
+                  assets={assets}
+                  scopeFilter={assetScope}
+                  projectFilter={assetProjectFilter}
+                />
+              </div>
               <section className="panel panel--form">
                 <div className="panel__header">
                   <h3>导入资源</h3>

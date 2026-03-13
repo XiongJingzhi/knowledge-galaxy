@@ -1,14 +1,32 @@
 import type { AssetRecord } from "../lib/types";
 
-export function AssetTable({ assets }: { assets: AssetRecord[] }) {
+export function AssetTable({
+  assets,
+  scopeFilter = "all",
+  projectFilter = "",
+}: {
+  assets: AssetRecord[];
+  scopeFilter?: "all" | "repo" | "project";
+  projectFilter?: string;
+}) {
+  const visibleAssets = assets.filter((asset) => {
+    if (scopeFilter !== "all" && asset.scope !== scopeFilter) {
+      return false;
+    }
+    if (scopeFilter === "project" && projectFilter && asset.project !== projectFilter) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <section className="panel">
       <div className="panel__header">
         <h3>资源清单</h3>
-        <span>{assets.length} 项</span>
+        <span>{visibleAssets.length} 项</span>
       </div>
       <div className="asset-table">
-        {assets.map((asset) => (
+        {visibleAssets.map((asset) => (
           <article key={asset.path} className="asset-row">
             <div>
               <strong>{asset.path}</strong>

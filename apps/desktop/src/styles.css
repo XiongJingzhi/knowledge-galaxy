@@ -166,6 +166,11 @@ button {
   gap: 20px;
 }
 
+.panel-stack {
+  display: grid;
+  gap: 20px;
+}
+
 .content-grid {
   grid-template-columns: minmax(360px, 480px) 1fr;
 }
