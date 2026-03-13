@@ -378,7 +378,7 @@ export function App() {
                       </select>
                     </label>
                     <label className="field">
-                      <span>项目 slug</span>
+                      <span>过滤项目 slug</span>
                     <input
                       value={assetProjectFilter}
                       onChange={(event) => setAssetProjectFilter(event.currentTarget.value)}
@@ -421,7 +421,7 @@ export function App() {
                     />
                   </label>
                   <label className="field">
-                    <span>项目 slug</span>
+                    <span>导入到项目 slug</span>
                     <input
                       value={assetForm.project}
                       onChange={(event) => {

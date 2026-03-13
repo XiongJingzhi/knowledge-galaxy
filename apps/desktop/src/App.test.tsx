@@ -206,4 +206,58 @@ describe("App", () => {
       );
     });
   });
+
+  it("imports an asset with project and target name from the asset workbench", async () => {
+    mockedApi.importAsset.mockResolvedValue({
+      path: "projects/atlas/assets/hero.png",
+      scope: "project",
+      project: "atlas",
+      size_bytes: 128,
+      sha256: "a".repeat(64),
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+    fireEvent.change(screen.getByLabelText("本地文件路径"), {
+      target: { value: "/tmp/hero.png" },
+    });
+    fireEvent.change(screen.getByLabelText("目标文件名"), {
+      target: { value: "hero.png" },
+    });
+    fireEvent.change(screen.getByLabelText("导入到项目 slug"), {
+      target: { value: "atlas" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "导入资源" }));
+
+    await waitFor(() => {
+      expect(mockedApi.importAsset).toHaveBeenCalledWith({
+        filePath: "/tmp/hero.png",
+        targetName: "hero.png",
+        project: "atlas",
+      });
+    });
+  });
+
+  it("renders validation errors after running validate", async () => {
+    mockedApi.runValidate.mockResolvedValue({
+      ok: false,
+      errors: ["notes/idea.md: missing asset path: ../assets/missing.png"],
+      raw: "notes/idea.md: missing asset path: ../assets/missing.png",
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
+    fireEvent.click(screen.getByRole("button", { name: "运行校验" }));
+
+    expect(
+      await screen.findByText("notes/idea.md: missing asset path: ../assets/missing.png"),
+    ).toBeInTheDocument();
+  });
 });
