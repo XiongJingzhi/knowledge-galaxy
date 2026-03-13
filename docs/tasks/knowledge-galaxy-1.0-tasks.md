@@ -39,6 +39,7 @@
 - [x] 定义文档元数据与全文搜索的 SQLite 结构
 - [x] 实现仓库到索引的同步
 - [x] 实现 `kg list`、`kg search`、`kg stats`
+- [x] 为 `list/search` 补齐 `status / project / date` 过滤能力
 - [x] 定义索引重建与导出行为
 
 ## 阶段 6：校验

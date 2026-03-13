@@ -97,7 +97,9 @@ printf 'Captured for today\n' | ./kg append daily
 ```bash
 ./kg --repo /path/to/content-repo validate
 ./kg --repo /path/to/content-repo list
+./kg --repo /path/to/content-repo list --status active --project atlas
 ./kg --repo /path/to/content-repo search idea
+./kg --repo /path/to/content-repo search review --date 2026-03-12
 ./kg --repo /path/to/content-repo stats
 ./kg --repo /path/to/content-repo export manifest
 ```

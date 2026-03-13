@@ -183,12 +183,22 @@ python3 -m implementations.python.kg import asset --file ~/Downloads/cover.png -
 ```bash
 python3 -m implementations.python.kg --repo /path/to/content-repo validate
 python3 -m implementations.python.kg --repo /path/to/content-repo list
+python3 -m implementations.python.kg --repo /path/to/content-repo list --status active --project atlas
 python3 -m implementations.python.kg --repo /path/to/content-repo search idea
+python3 -m implementations.python.kg --repo /path/to/content-repo search review --date 2026-03-12
 python3 -m implementations.python.kg --repo /path/to/content-repo stats
 python3 -m implementations.python.kg --repo /path/to/content-repo export document-list
 python3 -m implementations.python.kg --repo /path/to/content-repo export manifest
 python3 -m implementations.python.kg --repo /path/to/content-repo export change-list
 ```
+
+`list` 与 `search` 当前已支持：
+
+- `--status`
+- `--project`
+- `--date`
+- `list` 额外支持 `--type`
+- `search` 会先做全文匹配，再叠加过滤条件
 
 `validate` 当前会检查：
 

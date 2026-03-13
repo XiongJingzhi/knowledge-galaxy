@@ -712,13 +712,16 @@ func cmdList(repoRoot string, args []string) int {
 	fs := flag.NewFlagSet("list", flag.ContinueOnError)
 	fs.SetOutput(newDiscard())
 	typ := fs.String("type", "", "type filter")
+	status := fs.String("status", "", "status filter")
+	project := fs.String("project", "", "project filter")
+	date := fs.String("date", "", "date filter")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}
 	idx := buildIndex(repoRoot)
 	for _, d := range idx {
-		if *typ != "" && d.Type != *typ {
+		if !matchesQueryFilters(d, *typ, *status, *project, *date) {
 			continue
 		}
 		fmt.Printf("%s\t%s\t%s\n", d.Type, d.Title, d.Path)
@@ -727,13 +730,59 @@ func cmdList(repoRoot string, args []string) int {
 }
 
 func cmdSearch(repoRoot string, args []string) int {
-	if len(args) == 0 {
+	var filters queryFilters
+	var query string
+	i := 0
+	for i < len(args) {
+		switch args[i] {
+		case "--status":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "flag needs an argument: --status")
+				return 1
+			}
+			filters.status = args[i+1]
+			i += 2
+		case "--project":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "flag needs an argument: --project")
+				return 1
+			}
+			filters.project = args[i+1]
+			i += 2
+		case "--date":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "flag needs an argument: --date")
+				return 1
+			}
+			filters.date = args[i+1]
+			i += 2
+		case "--type":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "flag needs an argument: --type")
+				return 1
+			}
+			filters.typ = args[i+1]
+			i += 2
+		default:
+			if query == "" {
+				query = args[i]
+				i++
+				continue
+			}
+			fmt.Fprintln(os.Stderr, "unexpected argument:", args[i])
+			return 1
+		}
+	}
+	if query == "" {
 		fmt.Fprintln(os.Stderr, "missing query")
 		return 1
 	}
-	q := strings.ToLower(args[0])
+	q := strings.ToLower(query)
 	idx := buildIndex(repoRoot)
 	for _, d := range idx {
+		if !matchesQueryFilters(d, filters.typ, filters.status, filters.project, filters.date) {
+			continue
+		}
 		if strings.Contains(strings.ToLower(d.Title), q) || strings.Contains(strings.ToLower(d.Summary), q) || strings.Contains(strings.ToLower(d.Body), q) {
 			fmt.Printf("%s\t%s\t%s\n", d.Type, d.Title, d.Path)
 		}
@@ -991,6 +1040,29 @@ func buildIndex(repoRoot string) []Document {
 		res = append(res, m[k])
 	}
 	return res
+}
+
+type queryFilters struct {
+	typ     string
+	status  string
+	project string
+	date    string
+}
+
+func matchesQueryFilters(d Document, typ, status, project, date string) bool {
+	if typ != "" && d.Type != typ {
+		return false
+	}
+	if status != "" && d.Status != status {
+		return false
+	}
+	if project != "" && !inSet(project, d.Project) {
+		return false
+	}
+	if date != "" && d.Date != date {
+		return false
+	}
+	return true
 }
 
 func collectDocuments(repoRoot string) []string {

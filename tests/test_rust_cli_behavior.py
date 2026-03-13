@@ -171,3 +171,77 @@ Body
         )
         self.assertEqual(project_result.returncode, 0, msg=project_result.stderr)
         self.assertTrue((self.repo_root / "projects" / "atlas" / "assets" / "cover.png").exists())
+
+    def test_list_and_search_support_filters(self) -> None:
+        self.repo_root.mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "reviews").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes" / "idea.md").write_text(
+            """---
+id: note-1
+type: note
+title: Idea
+slug: idea
+created_at: 2026-03-11T00:00:00Z
+updated_at: 2026-03-11T00:00:00Z
+status: active
+theme: []
+project: ["atlas"]
+tags: []
+summary: ""
+---
+
+Idea body
+""",
+            encoding="utf-8",
+        )
+        (self.repo_root / "reviews" / "weekly.md").write_text(
+            """---
+id: review-1
+type: review
+title: Weekly
+slug: weekly
+created_at: 2026-03-12T00:00:00Z
+updated_at: 2026-03-12T00:00:00Z
+status: inbox
+date: 2026-03-12
+theme: []
+project: ["atlas"]
+tags: []
+summary: ""
+---
+
+Review body
+""",
+            encoding="utf-8",
+        )
+        (self.repo_root / "reviews" / "weekly-archive.md").write_text(
+            """---
+id: review-2
+type: review
+title: Weekly Archive
+slug: weekly-archive
+created_at: 2026-03-11T00:00:00Z
+updated_at: 2026-03-11T00:00:00Z
+status: inbox
+date: 2026-03-11
+theme: []
+project: ["atlas"]
+tags: []
+summary: ""
+---
+
+Review archive body
+""",
+            encoding="utf-8",
+        )
+
+        list_result = self.run_rust(["list", "--status", "active", "--project", "atlas"])
+        self.assertEqual(list_result.returncode, 0, msg=list_result.stderr)
+        self.assertIn("note\tIdea\tnotes/idea.md", list_result.stdout)
+        self.assertNotIn("Weekly", list_result.stdout)
+
+        search_result = self.run_rust(["search", "review", "--date", "2026-03-12"])
+        self.assertEqual(search_result.returncode, 0, msg=search_result.stderr)
+        self.assertIn("review\tWeekly\treviews/weekly.md", search_result.stdout)
+        self.assertNotIn("Weekly Archive", search_result.stdout)

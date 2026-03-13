@@ -152,13 +152,22 @@ OK
 ```bash
 python3 -m implementations.python.kg --repo /path/to/content-repo list
 python3 -m implementations.python.kg --repo /path/to/content-repo list --type note
+python3 -m implementations.python.kg --repo /path/to/content-repo list --status active --project atlas
 ```
 
 ### 搜索文档
 
 ```bash
 python3 -m implementations.python.kg --repo /path/to/content-repo search idea
+python3 -m implementations.python.kg --repo /path/to/content-repo search review --date 2026-03-12
 ```
+
+当前 `list` / `search` 已支持：
+
+- `--status`
+- `--project`
+- `--date`
+- `list` 额外支持 `--type`
 
 ### 查看统计
 

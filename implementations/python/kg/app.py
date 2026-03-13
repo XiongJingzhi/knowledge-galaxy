@@ -109,9 +109,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_parser = subparsers.add_parser("list")
     list_parser.add_argument("--type")
+    list_parser.add_argument("--status")
+    list_parser.add_argument("--project")
+    list_parser.add_argument("--date")
 
     search_parser = subparsers.add_parser("search")
     search_parser.add_argument("query")
+    search_parser.add_argument("--status")
+    search_parser.add_argument("--project")
+    search_parser.add_argument("--date")
 
     subparsers.add_parser("stats")
     subparsers.add_parser("validate")
@@ -367,7 +373,7 @@ def run(args: argparse.Namespace) -> int:
             if args.command == "list":
                 return run_list(connection, args)
             if args.command == "search":
-                return run_search(connection, args.query)
+                return run_search(connection, args)
             if args.command == "export":
                 return run_export(connection, args.export_type)
             return run_stats(connection)
@@ -377,9 +383,21 @@ def run(args: argparse.Namespace) -> int:
 def run_list(connection: sqlite3.Connection, args: argparse.Namespace) -> int:
     query = "SELECT type, title, path FROM documents"
     parameters: list[str] = []
+    where_clauses: list[str] = []
     if args.type:
-        query += " WHERE type = ?"
+        where_clauses.append("type = ?")
         parameters.append(args.type)
+    if args.status:
+        where_clauses.append("status = ?")
+        parameters.append(args.status)
+    if args.project:
+        where_clauses.append("project LIKE ?")
+        parameters.append(f'%"{args.project}"%')
+    if args.date:
+        where_clauses.append("date = ?")
+        parameters.append(args.date)
+    if where_clauses:
+        query += f" WHERE {' AND '.join(where_clauses)}"
     query += " ORDER BY path"
 
     for row in connection.execute(query, parameters):
@@ -387,15 +405,28 @@ def run_list(connection: sqlite3.Connection, args: argparse.Namespace) -> int:
     return 0
 
 
-def run_search(connection: sqlite3.Connection, query_text: str) -> int:
-    like_query = f"%{query_text.lower()}%"
+def run_search(connection: sqlite3.Connection, args: argparse.Namespace) -> int:
+    like_query = f"%{args.query.lower()}%"
+    parameters: list[str] = [like_query, like_query, like_query]
+    where_clauses = [
+        "(lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(body) LIKE ?)"
+    ]
+    if args.status:
+        where_clauses.append("status = ?")
+        parameters.append(args.status)
+    if args.project:
+        where_clauses.append("project LIKE ?")
+        parameters.append(f'%"{args.project}"%')
+    if args.date:
+        where_clauses.append("date = ?")
+        parameters.append(args.date)
     rows = connection.execute(
-        """
+        f"""
         SELECT type, title, path FROM documents
-        WHERE lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(body) LIKE ?
+        WHERE {' AND '.join(where_clauses)}
         ORDER BY path
         """,
-        (like_query, like_query, like_query),
+        parameters,
     )
     for row in rows:
         print("\t".join(row))

@@ -966,6 +966,14 @@ struct Document {
     updated: String,
 }
 
+#[derive(Default)]
+struct QueryFilters {
+    type_: Option<String>,
+    status: Option<String>,
+    project: Option<String>,
+    date: Option<String>,
+}
+
 fn cmd_validate(repo_root: &Path) -> i32 {
     let files = collect_documents(repo_root);
     let errs = validate_all(repo_root, &files);
@@ -980,20 +988,35 @@ fn cmd_validate(repo_root: &Path) -> i32 {
 }
 
 fn cmd_list(repo_root: &Path, args: &[String]) -> i32 {
-    let mut typ: Option<String> = None;
+    let mut filters = QueryFilters::default();
     let mut i = 0;
     while i < args.len() {
-        if args[i] == "--type" && i + 1 < args.len() {
-            typ = Some(args[i + 1].clone());
-            i += 2;
-        } else {
-            i += 1;
+        match args[i].as_str() {
+            "--type" if i + 1 < args.len() => {
+                filters.type_ = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--status" if i + 1 < args.len() => {
+                filters.status = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--project" if i + 1 < args.len() => {
+                filters.project = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--date" if i + 1 < args.len() => {
+                filters.date = Some(args[i + 1].clone());
+                i += 2;
+            }
+            _ => {
+                i += 1;
+            }
         }
     }
     let mut idx = build_index(repo_root);
     idx.sort_by(|a, b| a.path.cmp(&b.path));
     for d in idx {
-        if typ.as_ref().map_or(true, |t| &d.type_ == t) {
+        if matches_query_filters(&d, &filters) {
             println!("{}\t{}\t{}", d.type_, d.title, d.path);
         }
     }
@@ -1005,10 +1028,47 @@ fn cmd_search(repo_root: &Path, args: &[String]) -> i32 {
         eprintln!("missing query");
         return 1;
     }
-    let q = args[0].to_lowercase();
+    let mut filters = QueryFilters::default();
+    let mut query: Option<String> = None;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--status" if i + 1 < args.len() => {
+                filters.status = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--project" if i + 1 < args.len() => {
+                filters.project = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--date" if i + 1 < args.len() => {
+                filters.date = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--type" if i + 1 < args.len() => {
+                filters.type_ = Some(args[i + 1].clone());
+                i += 2;
+            }
+            value if !value.starts_with("--") && query.is_none() => {
+                query = Some(value.to_string());
+                i += 1;
+            }
+            _ => {
+                i += 1;
+            }
+        }
+    }
+    let Some(query_text) = query else {
+        eprintln!("missing query");
+        return 1;
+    };
+    let q = query_text.to_lowercase();
     let mut idx = build_index(repo_root);
     idx.sort_by(|a, b| a.path.cmp(&b.path));
     for d in idx {
+        if !matches_query_filters(&d, &filters) {
+            continue;
+        }
         let t = d.title.to_lowercase();
         let s = d.summary.to_lowercase();
         let b = d.body.to_lowercase();
@@ -1184,6 +1244,10 @@ fn build_index(repo_root: &Path) -> Vec<Document> {
             d.slug = meta.get("slug").cloned().unwrap_or_default();
             d.status = meta.get("status").cloned().unwrap_or_default();
             d.date = meta.get("date").cloned().unwrap_or_default();
+            d.theme = parse_front_list(meta.get("theme").map(String::as_str).unwrap_or(""));
+            d.project = parse_front_list(meta.get("project").map(String::as_str).unwrap_or(""));
+            d.tags = parse_front_list(meta.get("tags").map(String::as_str).unwrap_or(""));
+            d.source = parse_front_list(meta.get("source").map(String::as_str).unwrap_or(""));
             d.summary = meta.get("summary").cloned().unwrap_or_default();
             d.body = body.trim().to_string();
             d.created = meta.get("created_at").cloned().unwrap_or_default();
@@ -1235,6 +1299,47 @@ fn parse_front_value(v: &str) -> String {
         return String::new();
     }
     v.to_string()
+}
+
+fn parse_front_list(value: &str) -> Vec<String> {
+    let trimmed = value.trim();
+    if !(trimmed.starts_with('[') && trimmed.ends_with(']')) {
+        return if trimmed.is_empty() {
+            vec![]
+        } else {
+            vec![trimmed.to_string()]
+        };
+    }
+    let inner = &trimmed[1..trimmed.len() - 1];
+    if inner.trim().is_empty() {
+        return vec![];
+    }
+    inner
+        .split(',')
+        .map(|item| item.trim().trim_matches('"').trim_matches('\''))
+        .filter(|item| !item.is_empty())
+        .map(|item| item.to_string())
+        .collect()
+}
+
+fn matches_query_filters(doc: &Document, filters: &QueryFilters) -> bool {
+    if filters.type_.as_ref().is_some_and(|value| doc.type_ != *value) {
+        return false;
+    }
+    if filters.status.as_ref().is_some_and(|value| doc.status != *value) {
+        return false;
+    }
+    if filters
+        .project
+        .as_ref()
+        .is_some_and(|value| !doc.project.iter().any(|entry| entry == value))
+    {
+        return false;
+    }
+    if filters.date.as_ref().is_some_and(|value| doc.date != *value) {
+        return false;
+    }
+    true
 }
 
 fn validate_all(repo_root: &Path, files: &[PathBuf]) -> Vec<String> {
