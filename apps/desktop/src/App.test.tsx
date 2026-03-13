@@ -165,6 +165,9 @@ describe("App", () => {
         url: "git@github.com:org/orion.git",
       });
     });
+
+    expect(await screen.findByText("已执行项目命令")).toBeInTheDocument();
+    expect(screen.getByText("orion · add-remote")).toBeInTheDocument();
   });
 
   it("creates a note with inline body from the create workbench", async () => {
@@ -193,6 +196,9 @@ describe("App", () => {
         body: "Captured from desktop.",
       });
     });
+
+    expect(await screen.findByText("已创建文档")).toBeInTheDocument();
+    expect(screen.getByText("notes/ship-note.md")).toBeInTheDocument();
   });
 
   it("renders export content after running an export action", async () => {
@@ -368,6 +374,9 @@ describe("App", () => {
         project: "atlas",
       });
     });
+
+    expect(await screen.findByText("已导入资源")).toBeInTheDocument();
+    expect(screen.getByText("projects/atlas/assets/hero.png")).toBeInTheDocument();
   });
 
   it("renders validation errors after running validate", async () => {

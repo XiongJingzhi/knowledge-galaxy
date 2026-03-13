@@ -65,6 +65,9 @@ export function App() {
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [selectedProject, setSelectedProject] = useState("");
   const [projectResult, setProjectResult] = useState<CommandResult | null>(null);
+  const [activityItems, setActivityItems] = useState<
+    Array<{ title: string; detail: string; note?: string }>
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     type: "note",
@@ -88,6 +91,9 @@ export function App() {
   });
 
   const activeProject = useMemo(() => selectedProject, [selectedProject]);
+  const recordActivity = (title: string, detail: string, note?: string) => {
+    setActivityItems((current) => [{ title, detail, note }, ...current].slice(0, 5));
+  };
   const activeFilterEntries = useMemo(
     () =>
       Object.entries(filters).filter((entry): entry is [string, string] => {
@@ -194,10 +200,11 @@ export function App() {
 
   const handleSave = async (value: DocumentDetail) => {
     try {
-      await saveDocument(value.path, value);
+      const result = await saveDocument(value.path, value);
       await refreshOverview(repo?.path);
       const next = await getDocument(value.path);
       setDetail(next);
+      recordActivity("已保存文档", result.path, result.updatedAt);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -209,6 +216,7 @@ export function App() {
       setSelectedPath(created.path);
       await refreshOverview(repo?.path);
       setSection("documents");
+      recordActivity("已创建文档", created.path, createForm.type);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -216,9 +224,10 @@ export function App() {
 
   const handleImportAsset = async () => {
     try {
-      await importAsset(assetForm);
+      const imported = await importAsset(assetForm);
       await refreshOverview(repo?.path);
       setSection("assets");
+      recordActivity("已导入资源", imported.path, imported.scope === "project" ? imported.project : "repo");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -228,6 +237,7 @@ export function App() {
     try {
       const next = await runExport(kind);
       setSnapshot(next);
+      recordActivity("已导出", kind, `${next.content.length} chars`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -237,6 +247,7 @@ export function App() {
     try {
       const next = await runValidate();
       setValidation(next);
+      recordActivity("校验完成", next.ok ? "OK" : `发现 ${next.errors.length} 个问题`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -254,6 +265,7 @@ export function App() {
         url: remoteForm.url,
       });
       setProjectResult(result);
+      recordActivity("已执行项目命令", `${activeProject} · ${action}`, result.stdout || result.stderr);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -308,6 +320,32 @@ export function App() {
                 <strong className="overview-card__value">{card.value}</strong>
               </article>
             ))}
+          </section>
+          <section className="activity-feed panel">
+            <div className="panel__header">
+              <h3>最近操作</h3>
+              <span>{activityItems.length ? `${activityItems.length} 条` : "等待操作"}</span>
+            </div>
+            <div className="activity-feed__list">
+              {activityItems.length ? (
+                activityItems.map((item, index) => (
+                  <article key={`${item.title}-${item.detail}-${index}`} className="activity-item">
+                    <span className="activity-item__index">{(index + 1).toString().padStart(2, "0")}</span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.detail}</p>
+                      {item.note ? <span>{item.note}</span> : null}
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <article className="empty-state empty-state--compact">
+                  <span className="eyebrow">ACTIVITY FEED</span>
+                  <h4>最近还没有新的操作</h4>
+                  <p>创建、保存、导入、校验、导出和项目命令完成后，结果会在这里汇总展示。</p>
+                </article>
+              )}
+            </div>
           </section>
           {section === "documents" ? (
             <div className="content-grid">

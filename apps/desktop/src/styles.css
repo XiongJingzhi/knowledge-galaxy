@@ -240,6 +240,65 @@ button {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
+.activity-feed {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.34), transparent 58%),
+    var(--panel-strong);
+}
+
+.activity-feed__list {
+  display: grid;
+  gap: 12px;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(180, 79, 43, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 247, 238, 0.82));
+}
+
+.activity-item__index {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(180, 79, 43, 0.12);
+  color: var(--signal);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.activity-item strong {
+  display: block;
+  font-family: "Iowan Old Style", "Georgia", serif;
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+}
+
+.activity-item p,
+.activity-item span {
+  margin: 0;
+  color: var(--muted);
+}
+
+.activity-item p {
+  margin-top: 4px;
+}
+
+.activity-item span {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
 .overview-card {
   position: relative;
   overflow: hidden;
