@@ -351,4 +351,17 @@ describe("App", () => {
       await screen.findByText("notes/idea.md: missing asset path: ../assets/missing.png"),
     ).toBeInTheDocument();
   });
+
+  it("shows an error banner when validate fails to run", async () => {
+    mockedApi.runValidate.mockRejectedValue(new Error("validate crashed"));
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
+    fireEvent.click(screen.getByRole("button", { name: "运行校验" }));
+
+    expect(await screen.findByText("validate crashed")).toBeInTheDocument();
+  });
 });

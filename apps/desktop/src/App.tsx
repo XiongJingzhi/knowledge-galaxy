@@ -188,6 +188,15 @@ export function App() {
     }
   };
 
+  const handleValidate = async () => {
+    try {
+      const next = await runValidate();
+      setValidation(next);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
   const handleProjectAction = async (action: string) => {
     if (!activeProject) {
       return;
@@ -450,7 +459,7 @@ export function App() {
                   <span>使用现有 CLI 输出</span>
                 </div>
                 <div className="button-grid">
-                  <button type="button" onClick={() => void runValidate().then(setValidation)}>
+                  <button type="button" onClick={() => void handleValidate()}>
                     运行校验
                   </button>
                   {["document-list", "manifest", "change-list", "asset-list"].map((kind) => (
