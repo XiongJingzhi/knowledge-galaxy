@@ -470,6 +470,14 @@ def run_stats(connection: sqlite3.Connection) -> int:
         "SELECT status, COUNT(*) FROM documents GROUP BY status ORDER BY status"
     ):
         print(f"status:{status}\t{count}")
+
+    for prefix, column in (("theme", "theme"), ("tag", "tags")):
+        counts: dict[str, int] = {}
+        for (payload,) in connection.execute(f"SELECT {column} FROM documents"):
+            for value in json.loads(payload or "[]"):
+                counts[value] = counts.get(value, 0) + 1
+        for key in sorted(counts):
+            print(f"{prefix}:{key}\t{counts[key]}")
     return 0
 
 

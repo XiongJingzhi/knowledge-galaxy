@@ -174,6 +174,11 @@ python3 -m implementations.python.kg --repo /path/to/content-repo search idea --
 - `--source`
 - `list` 额外支持 `--type`
 
+当前 `stats` 还会输出：
+
+- `theme:<slug>` 主题分布
+- `tag:<slug>` 标签频率
+
 ### 查看统计
 
 ```bash

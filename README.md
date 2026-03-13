@@ -204,6 +204,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo export change-
 - `--source`
 - `list` 额外支持 `--type`
 - `search` 会先做全文匹配，再叠加过滤条件
+- `stats` 当前会额外输出 `theme:<slug>` 与 `tag:<slug>` 的频次分布
 
 `validate` 当前会检查：
 

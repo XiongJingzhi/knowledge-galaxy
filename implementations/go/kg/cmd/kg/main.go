@@ -828,9 +828,17 @@ func cmdStats(repoRoot string) int {
 	fmt.Printf("total\t%d\n", total)
 	byType := map[string]int{}
 	byStatus := map[string]int{}
+	byTheme := map[string]int{}
+	byTag := map[string]int{}
 	for _, d := range idx {
 		byType[d.Type]++
 		byStatus[d.Status]++
+		for _, theme := range d.Theme {
+			byTheme[theme]++
+		}
+		for _, tag := range d.Tags {
+			byTag[tag]++
+		}
 	}
 	keys := sortedKeys(byType)
 	for _, k := range keys {
@@ -839,6 +847,14 @@ func cmdStats(repoRoot string) int {
 	keys = sortedKeys(byStatus)
 	for _, k := range keys {
 		fmt.Printf("status:%s\t%d\n", k, byStatus[k])
+	}
+	keys = sortedKeys(byTheme)
+	for _, k := range keys {
+		fmt.Printf("theme:%s\t%d\n", k, byTheme[k])
+	}
+	keys = sortedKeys(byTag)
+	for _, k := range keys {
+		fmt.Printf("tag:%s\t%d\n", k, byTag[k])
 	}
 	return 0
 }

@@ -149,6 +149,36 @@ Body
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["documents"][0]["path"], "notes/rust-note.md")
 
+    def test_stats_include_theme_and_tag_counts(self) -> None:
+        self.repo_root.mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes" / "idea.md").write_text(
+            """---
+id: note-1
+type: note
+title: Idea
+slug: idea
+created_at: 2026-03-11T00:00:00Z
+updated_at: 2026-03-11T00:00:00Z
+status: active
+theme: ["knowledge"]
+project: ["atlas"]
+tags: ["idea", "mvp"]
+source: ["field-notes"]
+summary: ""
+---
+
+Body
+""",
+            encoding="utf-8",
+        )
+
+        result = self.run_rust(["stats"])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("theme:knowledge\t1", result.stdout)
+        self.assertIn("tag:idea\t1", result.stdout)
+        self.assertIn("tag:mvp\t1", result.stdout)
+
     def test_import_asset_supports_repo_and_project_assets(self) -> None:
         source_file = self.home.root / "rust-asset.png"
         source_file.write_bytes(b"rust-asset")

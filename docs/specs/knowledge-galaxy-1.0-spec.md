@@ -206,11 +206,11 @@ Knowledge Galaxy 1.0 定义索引层，但索引层不是事实来源。
 - 基于正文和元数据做简单搜索
 - `list` 支持 `--type`、`--status`、`--project`、`--date`、`--theme`、`--tag`、`--source`
 - `search` 支持 `--status`、`--project`、`--date`、`--theme`、`--tag`、`--source`
-- 输出文档数量统计
+- `stats` 输出总量、类型分布、状态分布、主题分布、标签频率
 
 规划中但尚未实现：
 
-- 更丰富的主题分布与标签频率统计
+- `source` 维度分布与更丰富的聚合视图
 
 ## 7. 模板规则
 

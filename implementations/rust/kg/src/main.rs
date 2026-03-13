@@ -1111,15 +1111,29 @@ fn cmd_stats(repo_root: &Path) -> i32 {
     println!("total\t{}", idx.len());
     let mut by_type: std::collections::BTreeMap<String, usize> = Default::default();
     let mut by_status: std::collections::BTreeMap<String, usize> = Default::default();
+    let mut by_theme: std::collections::BTreeMap<String, usize> = Default::default();
+    let mut by_tag: std::collections::BTreeMap<String, usize> = Default::default();
     for d in idx {
         *by_type.entry(d.type_).or_default() += 1;
         *by_status.entry(d.status).or_default() += 1;
+        for theme in d.theme {
+            *by_theme.entry(theme).or_default() += 1;
+        }
+        for tag in d.tags {
+            *by_tag.entry(tag).or_default() += 1;
+        }
     }
     for (k, v) in by_type {
         println!("type:{}\t{}", k, v);
     }
     for (k, v) in by_status {
         println!("status:{}\t{}", k, v);
+    }
+    for (k, v) in by_theme {
+        println!("theme:{}\t{}", k, v);
+    }
+    for (k, v) in by_tag {
+        println!("tag:{}\t{}", k, v);
     }
     0
 }
