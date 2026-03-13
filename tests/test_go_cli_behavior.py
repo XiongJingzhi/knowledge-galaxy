@@ -67,3 +67,32 @@ class GoCLIBehaviorTests(unittest.TestCase):
             (self.repo_root / "notes" / "go-clipboard.md").read_text(encoding="utf-8"),
         )
 
+    def test_validate_reports_missing_asset_and_reference_links(self) -> None:
+        self.repo_root.mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "notes" / "broken.md").write_text(
+            """---
+id: note-1
+type: note
+title: Broken
+slug: broken
+created_at: 2026-03-11T00:00:00Z
+updated_at: 2026-03-11T00:00:00Z
+status: inbox
+theme: []
+project: []
+tags: []
+summary: ""
+---
+
+![Diagram](../assets/missing.png)
+
+[Source](../references/missing.md)
+""",
+            encoding="utf-8",
+        )
+
+        result = self.run_go(["validate"])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("missing asset path", result.stdout)
+        self.assertIn("missing reference path", result.stdout)

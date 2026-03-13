@@ -104,7 +104,6 @@ python3 -m implementations.python.kg [--repo /path/to/content-repo] ...
 
 - 资源导入工作流
 - 导出命令
-- `reference` / `asset` 校验
 
 ## 推荐分发方式
 

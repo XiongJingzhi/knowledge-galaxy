@@ -65,7 +65,6 @@ README.md
 
 - 资源导入工作流
 - 导出 document list / change list / manifest
-- `reference` / `asset` 校验
 
 ## 默认知识仓库
 
@@ -185,6 +184,14 @@ python3 -m implementations.python.kg --repo /path/to/content-repo list
 python3 -m implementations.python.kg --repo /path/to/content-repo search idea
 python3 -m implementations.python.kg --repo /path/to/content-repo stats
 ```
+
+`validate` 当前会检查：
+
+- frontmatter 必填字段
+- 文档路径与 slug 规则
+- 重复 ID
+- project 的 `git_worktree`
+- Markdown 正文中指向 `assets/` 与 `references/` 的相对链接是否存在
 
 ### 项目远端操作
 

@@ -12,6 +12,7 @@ ALLOWED_TYPES = {"daily", "note", "decision", "review", "project"}
 ALLOWED_STATUSES = {"inbox", "active", "evergreen", "archived"}
 REQUIRED_FIELDS = {"id", "type", "title", "slug", "created_at", "updated_at", "status"}
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+MARKDOWN_LINK_PATTERN = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 CONTENT_ROOTS = ("notes", "dailies", "decisions", "reviews", "projects")
 
 
@@ -22,7 +23,7 @@ def validate_repository(repo_root: Path) -> list[str]:
     for path in iter_documents(repo_root):
         relative_path = path.relative_to(repo_root).as_posix()
         try:
-            metadata, _body = parse_frontmatter_file(path)
+            metadata, body = parse_frontmatter_file(path)
         except ValueError as exc:
             errors.append(f"{relative_path}: {exc}")
             continue
@@ -55,6 +56,8 @@ def validate_repository(repo_root: Path) -> list[str]:
         document_id = stringify(metadata.get("id"))
         if document_id:
             id_paths[document_id].append(relative_path)
+
+        validate_markdown_links(repo_root, path, body, errors)
 
     for document_id, paths in sorted(id_paths.items()):
         if len(paths) > 1:
@@ -127,6 +130,53 @@ def validate_project_document(
         return
     if not is_git_worktree(worktree_path.resolve()):
         errors.append(f"{relative_path}: git_worktree is not a git working tree")
+
+
+def validate_markdown_links(
+    repo_root: Path, document_path: Path, body: str, errors: list[str]
+) -> None:
+    relative_document = document_path.relative_to(repo_root).as_posix()
+    assets_root = (repo_root / "assets").resolve()
+    references_root = (repo_root / "references").resolve()
+
+    for raw_target in MARKDOWN_LINK_PATTERN.findall(body):
+        target = clean_markdown_target(raw_target)
+        if not target or is_external_target(target):
+            continue
+
+        resolved = (document_path.parent / target).resolve()
+        if is_under_root(resolved, assets_root) and not resolved.exists():
+            errors.append(f"{relative_document}: missing asset path: {target}")
+        elif is_under_root(resolved, references_root) and not resolved.exists():
+            errors.append(f"{relative_document}: missing reference path: {target}")
+
+
+def clean_markdown_target(raw_target: str) -> str:
+    target = raw_target.strip()
+    if not target:
+        return ""
+    if " " in target:
+        target = target.split(" ", 1)[0]
+    return target.strip("<>")
+
+
+def is_external_target(target: str) -> bool:
+    lowered = target.lower()
+    return (
+        target.startswith("#")
+        or target.startswith("/")
+        or "://" in target
+        or lowered.startswith("mailto:")
+        or lowered.startswith("data:")
+    )
+
+
+def is_under_root(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
 
 
 def stringify(value: object | None) -> str:

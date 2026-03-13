@@ -46,7 +46,7 @@
 - [x] 实现 frontmatter 校验
 - [x] 实现路径与命名校验
 - [x] 实现唯一 ID 校验
-- [ ] 实现 reference 与 asset 校验
+- [x] 实现 reference 与 asset 校验
 
 ## 阶段 7：测试与发布就绪
 

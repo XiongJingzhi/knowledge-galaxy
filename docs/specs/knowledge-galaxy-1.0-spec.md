@@ -242,6 +242,7 @@ CLI 可执行名为 `kg`。
 - `project fetch`
 - `project push`
 - `project sync`
+- `validate` 中的 `reference` / `asset` 相对链接存在性检查
 
 ### 8.2 默认仓库行为
 
@@ -266,7 +267,6 @@ CLI 可执行名为 `kg`。
 
 - 资源导入命令
 - 导出 document list / change list / manifest
-- `reference` / `asset` 校验
 
 ## 9. 文档与实现对齐原则
 

@@ -144,7 +144,56 @@ class KGValidateTests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
         self.assertIn("git_worktree is not a git working tree", stdout.getvalue())
 
-    def note_document(self, title: str | None, slug: str, document_id: str) -> str:
+    def test_validate_accepts_existing_asset_and_reference_links(self) -> None:
+        from implementations.python.kg.app import main
+
+        self.repo.write_file("assets/diagram.png", "binary placeholder")
+        self.repo.write_file(
+            "references/source.md",
+            self.note_document(title="Source", slug="source", document_id="ref-1"),
+        )
+        self.repo.write_file(
+            "notes/linked-note.md",
+            self.note_document(
+                title="Linked Note",
+                slug="linked-note",
+                document_id="note-1",
+                body='![Diagram](../assets/diagram.png)\n\n[Source](../references/source.md)',
+            ),
+        )
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(["--repo", str(self.repo.root), "validate"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout.getvalue().strip(), "OK")
+
+    def test_validate_rejects_missing_asset_and_reference_links(self) -> None:
+        from implementations.python.kg.app import main
+
+        self.repo.write_file(
+            "notes/broken-links.md",
+            self.note_document(
+                title="Broken Links",
+                slug="broken-links",
+                document_id="note-1",
+                body='![Diagram](../assets/missing.png)\n\n[Source](../references/missing.md)',
+            ),
+        )
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(["--repo", str(self.repo.root), "validate"])
+
+        self.assertEqual(exit_code, 1)
+        output = stdout.getvalue()
+        self.assertIn("missing asset path", output)
+        self.assertIn("missing reference path", output)
+
+    def note_document(
+        self, title: str | None, slug: str, document_id: str, body: str = "Body"
+    ) -> str:
         title_line = f"title: {title}\n" if title is not None else ""
         return textwrap.dedent(
             f"""\
@@ -161,7 +210,7 @@ tags: []
 summary: ""
 ---
 
-Body
+{body}
 """
         )
 

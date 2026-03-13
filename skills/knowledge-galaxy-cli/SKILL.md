@@ -132,6 +132,14 @@ python3 -m implementations.python.kg --repo /path/to/content-repo validate
 OK
 ```
 
+当前 `validate` 会检查：
+
+- frontmatter 必填字段
+- 路径与 slug 规则
+- 重复 ID
+- project 的 `git_worktree`
+- 正文中指向 `assets/` 与 `references/` 的相对 Markdown 链接是否存在
+
 ### 列出文档
 
 ```bash

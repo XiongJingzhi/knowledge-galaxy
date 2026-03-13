@@ -1047,7 +1047,7 @@ fn validate_all(repo_root: &Path, files: &[PathBuf]) -> Vec<String> {
     for f in files {
         let rel = rel_path(repo_root, f);
         match parse_frontmatter_file(f) {
-            Ok((meta, _body)) => {
+            Ok((meta, body)) => {
                 for k in [
                     "id",
                     "type",
@@ -1138,6 +1138,7 @@ fn validate_all(repo_root: &Path, files: &[PathBuf]) -> Vec<String> {
                 if let Some(id) = meta.get("id").cloned() {
                     ids.entry(id).or_default().push(rel);
                 }
+                errs.extend(validate_markdown_links(repo_root, f, &body));
             }
             Err(e) => errs.push(format!("{}: {}", rel, e)),
         }
@@ -1172,6 +1173,89 @@ fn valid_slug(s: &str) -> bool {
         }
     }
     true
+}
+
+fn validate_markdown_links(repo_root: &Path, document_path: &Path, body: &str) -> Vec<String> {
+    let mut errs = vec![];
+    let rel = rel_path(repo_root, document_path);
+    let assets_root = repo_root.join("assets");
+    let references_root = repo_root.join("references");
+    for target in markdown_targets(body) {
+        let cleaned = clean_markdown_target(&target);
+        if cleaned.is_empty() || is_external_target(&cleaned) {
+            continue;
+        }
+        let resolved = normalize_path(&document_path.parent().unwrap_or(repo_root).join(&cleaned));
+        if is_under_root(&resolved, &assets_root) && !resolved.exists() {
+            errs.push(format!("{}: missing asset path: {}", rel, cleaned));
+        } else if is_under_root(&resolved, &references_root) && !resolved.exists() {
+            errs.push(format!("{}: missing reference path: {}", rel, cleaned));
+        }
+    }
+    errs
+}
+
+fn markdown_targets(body: &str) -> Vec<String> {
+    let bytes = body.as_bytes();
+    let mut out = vec![];
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if bytes[i] == b'[' || (bytes[i] == b'!' && i + 1 < bytes.len() && bytes[i + 1] == b'[') {
+            let mut j = i;
+            while j < bytes.len() && bytes[j] != b']' {
+                j += 1;
+            }
+            if j + 1 < bytes.len() && bytes[j + 1] == b'(' {
+                let start = j + 2;
+                let mut end = start;
+                while end < bytes.len() && bytes[end] != b')' {
+                    end += 1;
+                }
+                if end <= bytes.len() {
+                    out.push(body[start..end].to_string());
+                    i = end;
+                }
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+fn clean_markdown_target(target: &str) -> String {
+    let trimmed = target.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    let no_title = trimmed.split_once(' ').map(|(a, _)| a).unwrap_or(trimmed);
+    no_title.trim_matches(|c| c == '<' || c == '>').to_string()
+}
+
+fn is_external_target(target: &str) -> bool {
+    let lower = target.to_lowercase();
+    target.starts_with('#')
+        || target.starts_with('/')
+        || target.contains("://")
+        || lower.starts_with("mailto:")
+        || lower.starts_with("data:")
+}
+
+fn is_under_root(path: &Path, root: &Path) -> bool {
+    path.strip_prefix(root).is_ok()
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    normalized
 }
 
 // ---- project (git) ----

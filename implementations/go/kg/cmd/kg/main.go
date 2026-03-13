@@ -880,7 +880,7 @@ func validateAll(repoRoot string, files []string) []string {
 	ids := map[string][]string{}
 	for _, f := range files {
 		rel := relPath(repoRoot, f)
-		meta, _, err := parseFrontmatterFile(f)
+		meta, body, err := parseFrontmatterFile(f)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", rel, err))
 			continue
@@ -955,6 +955,7 @@ func validateAll(repoRoot string, files []string) []string {
 		if id := asString(meta["id"]); id != "" {
 			ids[id] = append(ids[id], rel)
 		}
+		errs = append(errs, validateMarkdownLinks(repoRoot, f, body)...)
 	}
 	// duplicates
 	for id, paths := range ids {
@@ -966,6 +967,63 @@ func validateAll(repoRoot string, files []string) []string {
 }
 
 func validSlug(s string) bool { return regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`).MatchString(s) }
+
+var markdownLinkPattern = regexp.MustCompile(`!?\[[^\]]*\]\(([^)]+)\)`)
+
+func validateMarkdownLinks(repoRoot, docPath, body string) []string {
+	var errs []string
+	rel := relPath(repoRoot, docPath)
+	assetsRoot := filepath.Clean(filepath.Join(repoRoot, "assets"))
+	referencesRoot := filepath.Clean(filepath.Join(repoRoot, "references"))
+	for _, match := range markdownLinkPattern.FindAllStringSubmatch(body, -1) {
+		if len(match) < 2 {
+			continue
+		}
+		target := cleanMarkdownTarget(match[1])
+		if target == "" || isExternalTarget(target) {
+			continue
+		}
+		resolved := filepath.Clean(filepath.Join(filepath.Dir(docPath), filepath.FromSlash(target)))
+		if isUnderRoot(resolved, assetsRoot) {
+			if _, err := os.Stat(resolved); err != nil {
+				errs = append(errs, fmt.Sprintf("%s: missing asset path: %s", rel, target))
+			}
+		} else if isUnderRoot(resolved, referencesRoot) {
+			if _, err := os.Stat(resolved); err != nil {
+				errs = append(errs, fmt.Sprintf("%s: missing reference path: %s", rel, target))
+			}
+		}
+	}
+	return errs
+}
+
+func cleanMarkdownTarget(target string) string {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return ""
+	}
+	if idx := strings.IndexRune(target, ' '); idx >= 0 {
+		target = target[:idx]
+	}
+	return strings.Trim(target, "<>")
+}
+
+func isExternalTarget(target string) bool {
+	lower := strings.ToLower(target)
+	return strings.HasPrefix(target, "#") ||
+		strings.HasPrefix(target, "/") ||
+		strings.Contains(target, "://") ||
+		strings.HasPrefix(lower, "mailto:") ||
+		strings.HasPrefix(lower, "data:")
+}
+
+func isUnderRoot(path, root string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
 
 // --- frontmatter ---
 

@@ -59,7 +59,7 @@ make test-rust
 
 - `create` 下的文档创建命令
 - `append` 和 `import` 下的捕获命令
-- 仓库校验
+- 仓库校验（包括 `assets/` / `references/` 相对链接存在性检查）
 - 仓库的列表、搜索和统计
 - `project` 下的项目 git 操作
 
