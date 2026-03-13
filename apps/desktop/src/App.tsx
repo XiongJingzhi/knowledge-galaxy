@@ -139,9 +139,54 @@ export function App() {
     }
     return cards;
   }, [assets.length, recentRepos.length, stats]);
+  const documentSignals = useMemo(() => {
+    if (!stats) {
+      return [];
+    }
+    const candidates = [
+      {
+        group: "type",
+        title: "类型",
+        actionLabel: "按类型浏览",
+        filterKey: "type" as const,
+      },
+      {
+        group: "status",
+        title: "状态",
+        actionLabel: "聚焦状态",
+        filterKey: "status" as const,
+      },
+      {
+        group: "theme",
+        title: "主题",
+        actionLabel: "查看主题",
+        filterKey: "theme" as const,
+      },
+    ];
+    return candidates
+      .map((candidate) => {
+        const item = stats.groups[candidate.group]?.[0];
+        if (!item) {
+          return null;
+        }
+        return {
+          ...candidate,
+          key: item.key,
+          count: item.count,
+        };
+      })
+      .filter((value): value is NonNullable<typeof value> => value !== null);
+  }, [stats]);
   const resetDocumentView = () => {
     setQuery("");
     setFilters({});
+  };
+  const applyDocumentSignal = (filterKey: keyof DocumentFilters, value: string) => {
+    setQuery("");
+    setFilters((current) => ({
+      ...current,
+      [filterKey]: value,
+    }));
   };
   const refreshOverview = async (repoPath?: string) => {
     try {
@@ -471,6 +516,30 @@ export function App() {
                   <span>搜索</span>
                   <input value={query} onChange={(event) => setQuery(event.currentTarget.value)} />
                 </label>
+                {documentSignals.length ? (
+                  <section className="signal-rail" aria-label="文档信号条">
+                    <div className="panel__header signal-rail__header">
+                      <h3>文档信号条</h3>
+                      <span>从统计摘要一键进入焦点视图</span>
+                    </div>
+                    <div className="signal-rail__grid">
+                      {documentSignals.map((signal) => (
+                        <article key={`${signal.group}-${signal.key}`} className="signal-card">
+                          <span className="signal-card__group">{signal.title}</span>
+                          <strong className="signal-card__key">{signal.key}</strong>
+                          <span className="signal-card__count">{signal.count} 篇</span>
+                          <button
+                            className="ghost-button signal-card__action"
+                            type="button"
+                            onClick={() => applyDocumentSignal(signal.filterKey, signal.key)}
+                          >
+                            {signal.actionLabel} {signal.key}
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
                 <FiltersPanel filters={filters} onChange={setFilters} />
                 <div className="list-panel">
                   {documents.length ? (

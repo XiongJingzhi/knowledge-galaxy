@@ -168,6 +168,37 @@ describe("App", () => {
     expect(screen.getByText("当前视图 · 全部文档")).toBeInTheDocument();
   });
 
+  it("renders document signal cards from the top stats groups", async () => {
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    expect(screen.getByText("文档信号条")).toBeInTheDocument();
+    expect(screen.getByText("active")).toBeInTheDocument();
+    expect(screen.getByText("8 篇")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "聚焦状态 active" })).toBeInTheDocument();
+  });
+
+  it("applies a status focus from the document signal rail and clears the current query", async () => {
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+
+    fireEvent.change(screen.getByLabelText("搜索"), {
+      target: { value: "search phrase" },
+    });
+
+    await screen.findByText("当前视图 · 搜索 “search phrase”");
+
+    fireEvent.click(screen.getByRole("button", { name: "聚焦状态 active" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("搜索")).toHaveValue("");
+      expect(screen.getByLabelText("状态")).toHaveValue("active");
+    });
+    expect(screen.getByText("当前视图 · status: active")).toBeInTheDocument();
+  });
+
   it("runs project add-remote with the selected project and remote form values", async () => {
     render(<App />);
 
