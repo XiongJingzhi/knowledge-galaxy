@@ -667,7 +667,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = parser.parse_args(normalize_argv(raw_argv))
         return run(args)
-    except CommandError as exc:
+    except (CommandError, FileNotFoundError, ValueError) as exc:
         sys.stderr.write(f"{exc}\n")
         return 1
     except SystemExit as exc:

@@ -1,6 +1,6 @@
 import io
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 from tests.helpers import TemporaryRepo
 
@@ -172,3 +172,26 @@ class KGCreateTests(unittest.TestCase):
         self.assertIn("type: project", content)
         self.assertIn(f"git_worktree: {git_worktree.resolve()}", content)
         self.assertIn("projects/alpha/README.md", stdout.getvalue().strip())
+
+    def test_create_note_rejects_symbol_only_title_without_traceback(self) -> None:
+        from implementations.python.kg.app import main
+
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            exit_code = main(
+                [
+                    "--repo",
+                    str(self.repo.root),
+                    "create",
+                    "note",
+                    "--title",
+                    "!!!",
+                ]
+            )
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn(
+            "Title must contain at least one alphanumeric character",
+            stderr.getvalue(),
+        )
+        self.assertNotIn("Traceback", stderr.getvalue())
