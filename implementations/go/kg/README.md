@@ -1,32 +1,29 @@
-# Go Implementation / Go 实现
-
-This directory contains the Go implementation of the `kg` CLI.
+# Go 实现说明
 
 这个目录包含 `kg` CLI 的 Go 版本实现。
 
-## Status / 状态
+## 状态
 
-The Go implementation is kept in-tree as an alternative implementation of the CLI. It currently builds successfully from this module root and covers the same 1.0 command surface as the other implementations: `create`, `append`, `import`, `validate`, `list`, `search`, `stats`, and `project`.
+Go 版本作为 CLI 的并行实现保留在仓库中。它目前可以从这个模块根目录成功构建，并覆盖与其他实现相同的 1.0 命令集合：
 
-Go 版本作为 CLI 的并行实现保留在仓库中。它目前可以从这个模块根目录成功构建，并覆盖与其他实现相同的 1.0 命令集合：`create`、`append`、`import`、`validate`、`list`、`search`、`stats` 和 `project`。
-
-The repository now runs dedicated behavior tests against this implementation, while Python remains the most fully documented path.
+- `create`
+- `append`
+- `import`
+- `validate`
+- `list`
+- `search`
+- `stats`
+- `project`
 
 仓库现在会对这套实现运行专门的行为测试，同时 Python 仍然是文档最完整的实现路径。
 
-## Location / 目录位置
-
-- Module root: `implementations/go/kg`
-- Main entrypoint: `implementations/go/kg/cmd/kg/main.go`
-- Module file: `implementations/go/kg/go.mod`
+## 目录位置
 
 - 模块根目录：`implementations/go/kg`
 - 主入口：`implementations/go/kg/cmd/kg/main.go`
 - 模块文件：`implementations/go/kg/go.mod`
 
-## Build / 构建
-
-From the repository root:
+## 构建
 
 从仓库根目录执行：
 
@@ -35,8 +32,6 @@ make build-go
 make build-go-cross
 ```
 
-From the Go module root:
-
 从 Go 模块根目录执行：
 
 ```bash
@@ -44,17 +39,11 @@ cd implementations/go/kg
 go build ./cmd/kg
 ```
 
-The root build target writes the binary to `bin/kg`.
-
 根级构建命令会将二进制文件输出到 `bin/kg`。
-
-The cross-platform build target writes named artifacts under `dist/go/`.
 
 跨平台构建命令会把带平台名称的产物输出到 `dist/go/`。
 
-## Verification / 验证
-
-From the repository root:
+## 验证
 
 从仓库根目录执行：
 
@@ -62,21 +51,11 @@ From the repository root:
 make test-go
 ```
 
-This target runs the Go behavior test suite from the repository root.
-
 这个命令会从仓库根目录运行 Go 行为测试套件。
 
-## Command Surface / 命令范围
-
-The Go implementation currently includes:
+## 命令范围
 
 当前 Go 实现包含：
-
-- document creation commands under `create`
-- capture commands under `append` and `import`
-- repository validation
-- repository listing, search, and stats
-- project git operations under `project`
 
 - `create` 下的文档创建命令
 - `append` 和 `import` 下的捕获命令
@@ -84,13 +63,9 @@ The Go implementation currently includes:
 - 仓库的列表、搜索和统计
 - `project` 下的项目 git 操作
 
-If `--repo` is omitted, the CLI uses `~/.knowledge-galax` and creates the base repository layout on demand.
-
 如果没有传入 `--repo`，CLI 会默认使用 `~/.knowledge-galax`，并在需要时自动创建基础仓库结构。
 
-## Usage Examples / 使用示例
-
-Build and run from the Go module root:
+## 使用示例
 
 在 Go 模块根目录中构建并运行：
 
@@ -99,8 +74,6 @@ cd implementations/go/kg
 go build -o kg ./cmd/kg
 ./kg --repo /path/to/content-repo validate
 ```
-
-Create documents:
 
 创建文档：
 
@@ -115,8 +88,6 @@ printf 'Captured for today\n' | ./kg append daily
 ./kg import clipboard note --title "Clipboard Note"
 ```
 
-Validate and query a repository:
-
 校验和查询仓库：
 
 ```bash
@@ -125,8 +96,6 @@ Validate and query a repository:
 ./kg --repo /path/to/content-repo search idea
 ./kg --repo /path/to/content-repo stats
 ```
-
-Operate project repositories:
 
 操作项目仓库：
 
@@ -137,16 +106,11 @@ Operate project repositories:
 ./kg --repo /path/to/content-repo project sync --project atlas --remote origin
 ```
 
-## Relationship To Python / 与 Python 实现的关系
-
-Python is still the reference implementation for most narrative examples, but the Go implementation now participates in repository-level behavior testing and is intended to remain command-compatible for the 1.0 surface.
+## 与 Python 实现的关系
 
 Python 版本仍然是当前仓库中大多数叙述性示例的参考实现，但 Go 版本现在已经纳入仓库级行为测试，并以保持 1.0 命令兼容为目标。
 
-## Known Limitations / 已知限制
-
-- Root-level narrative examples still prefer Python when only one implementation is shown.
-- Any future behavior comparisons should be verified explicitly against the Python implementation.
+## 已知限制
 
 - 根级文档中的叙述性命令示例在只展示一种实现时仍优先使用 Python。
 - 未来如果要比较行为一致性，需要显式对照 Python 版本验证。
