@@ -149,6 +149,23 @@ Body
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["documents"][0]["path"], "notes/rust-note.md")
 
+    def test_export_asset_list_returns_repo_and_project_assets(self) -> None:
+        (self.repo_root / "assets").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "projects" / "atlas" / "assets").mkdir(parents=True, exist_ok=True)
+        (self.repo_root / "assets" / "diagram.png").write_text("diagram", encoding="utf-8")
+        (self.repo_root / "projects" / "atlas" / "assets" / "cover.png").write_text(
+            "cover", encoding="utf-8"
+        )
+
+        result = self.run_rust(["export", "asset-list"])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload[0]["path"], "assets/diagram.png")
+        self.assertEqual(payload[0]["scope"], "repo")
+        self.assertEqual(payload[1]["path"], "projects/atlas/assets/cover.png")
+        self.assertEqual(payload[1]["scope"], "project")
+        self.assertEqual(payload[1]["project"], "atlas")
+
     def test_stats_include_theme_and_tag_counts(self) -> None:
         self.repo_root.mkdir(parents=True, exist_ok=True)
         (self.repo_root / "notes").mkdir(parents=True, exist_ok=True)

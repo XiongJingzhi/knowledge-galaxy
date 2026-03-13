@@ -1164,6 +1164,10 @@ fn cmd_export(repo_root: &Path, args: &[String]) -> i32 {
             println!("{}", export_change_list_json(&idx));
             0
         }
+        "asset-list" => {
+            println!("{}", export_asset_list_json(repo_root));
+            0
+        }
         _ => {
             eprintln!("Unsupported export type");
             1
@@ -1219,6 +1223,69 @@ fn export_change_list_json(idx: &[Document]) -> String {
         .collect::<Vec<_>>()
         .join(",\n");
     format!("[\n{}\n]", indent_lines(&items, 2))
+}
+
+fn export_asset_list_json(repo_root: &Path) -> String {
+    let mut items: Vec<(String, String, Option<String>, u64)> = vec![];
+    let repo_assets = repo_root.join("assets");
+    let _ = visit_assets(repo_root, &repo_assets, "repo", None, &mut items);
+
+    let projects_root = repo_root.join("projects");
+    if let Ok(entries) = fs::read_dir(&projects_root) {
+        for entry in entries.flatten() {
+            let asset_root = entry.path().join("assets");
+            if asset_root.is_dir() {
+                let project = entry.file_name().to_string_lossy().to_string();
+                let _ = visit_assets(repo_root, &asset_root, "project", Some(project), &mut items);
+            }
+        }
+    }
+
+    items.sort_by(|a, b| a.0.cmp(&b.0));
+    let body = items
+        .iter()
+        .map(|(path, scope, project, size_bytes)| {
+            let mut fields = vec![
+                ("path", json_string(path)),
+                ("scope", json_string(scope)),
+                ("size_bytes", size_bytes.to_string()),
+            ];
+            if let Some(project_name) = project {
+                fields.push(("project", json_string(project_name)));
+            }
+            json_object(&fields)
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+    format!("[\n{}\n]", indent_lines(&body, 2))
+}
+
+fn visit_assets(
+    repo_root: &Path,
+    root: &Path,
+    scope: &str,
+    project: Option<String>,
+    out: &mut Vec<(String, String, Option<String>, u64)>,
+) -> io::Result<()> {
+    if !root.exists() {
+        return Ok(());
+    }
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            let _ = visit_assets(repo_root, &path, scope, project.clone(), out);
+        } else if path.is_file() {
+            let size_bytes = entry.metadata()?.len();
+            out.push((
+                rel_path(repo_root, &path),
+                scope.to_string(),
+                project.clone(),
+                size_bytes,
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn json_object(fields: &[(&str, String)]) -> String {

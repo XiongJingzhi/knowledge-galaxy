@@ -134,6 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
     export_subparsers.add_parser("document-list")
     export_subparsers.add_parser("manifest")
     export_subparsers.add_parser("change-list")
+    export_subparsers.add_parser("asset-list")
 
     return parser
 
@@ -381,7 +382,7 @@ def run(args: argparse.Namespace) -> int:
             if args.command == "search":
                 return run_search(connection, args)
             if args.command == "export":
-                return run_export(connection, args.export_type)
+                return run_export(repo_root, connection, args.export_type)
             return run_stats(connection)
     return 0
 
@@ -481,7 +482,7 @@ def run_stats(connection: sqlite3.Connection) -> int:
     return 0
 
 
-def run_export(connection: sqlite3.Connection, export_type: str) -> int:
+def run_export(repo_root: Path, connection: sqlite3.Connection, export_type: str) -> int:
     if export_type == "document-list":
         payload = export_document_list(connection)
     elif export_type == "manifest":
@@ -493,6 +494,8 @@ def run_export(connection: sqlite3.Connection, export_type: str) -> int:
         }
     elif export_type == "change-list":
         payload = export_change_list(connection)
+    elif export_type == "asset-list":
+        payload = export_asset_list(repo_root)
     else:
         raise CommandError("Unsupported export type")
     print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -540,6 +543,37 @@ def export_change_list(connection: sqlite3.Connection) -> list[dict[str, str]]:
         }
         for row in rows
     ]
+
+
+def export_asset_list(repo_root: Path) -> list[dict[str, object]]:
+    assets: list[dict[str, object]] = []
+    repo_assets = repo_root / "assets"
+    if repo_assets.exists():
+        for path in sorted(repo_assets.rglob("*")):
+            if path.is_file():
+                assets.append(
+                    {
+                        "path": path.relative_to(repo_root).as_posix(),
+                        "scope": "repo",
+                        "size_bytes": path.stat().st_size,
+                    }
+                )
+
+    projects_root = repo_root / "projects"
+    if projects_root.exists():
+        for asset_dir in sorted(projects_root.glob("*/assets")):
+            project_slug = asset_dir.parent.name
+            for path in sorted(asset_dir.rglob("*")):
+                if path.is_file():
+                    assets.append(
+                        {
+                            "path": path.relative_to(repo_root).as_posix(),
+                            "scope": "project",
+                            "project": project_slug,
+                            "size_bytes": path.stat().st_size,
+                        }
+                    )
+    return assets
 
 
 def import_asset(

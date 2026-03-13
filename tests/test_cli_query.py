@@ -145,6 +145,20 @@ class KGQueryTests(unittest.TestCase):
         self.assertIn("generated_at", payload)
         self.assertEqual(len(payload["documents"]), 4)
 
+    def test_export_asset_list_returns_repo_and_project_assets(self) -> None:
+        self.repo.write_file("assets/diagram.png", "diagram-bytes")
+        self.repo.write_file("projects/atlas/assets/cover.png", "cover-bytes")
+
+        output = self.run_cli("export", "asset-list")
+
+        payload = json.loads(output)
+        self.assertEqual(payload[0]["path"], "assets/diagram.png")
+        self.assertEqual(payload[0]["scope"], "repo")
+        self.assertEqual(payload[0]["size_bytes"], len("diagram-bytes"))
+        self.assertEqual(payload[1]["path"], "projects/atlas/assets/cover.png")
+        self.assertEqual(payload[1]["scope"], "project")
+        self.assertEqual(payload[1]["project"], "atlas")
+
     def test_export_change_list_sorts_by_updated_at_desc(self) -> None:
         self.repo.write_file(
             "reviews/fresh-review.md",

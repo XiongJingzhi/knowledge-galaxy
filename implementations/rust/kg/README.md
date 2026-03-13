@@ -104,6 +104,7 @@ printf 'Captured for today\n' | ./target/debug/kg append daily
 ./target/debug/kg --repo /path/to/content-repo search idea --source field-notes
 ./target/debug/kg --repo /path/to/content-repo stats
 ./target/debug/kg --repo /path/to/content-repo export manifest
+./target/debug/kg --repo /path/to/content-repo export asset-list
 ```
 
 `stats` 会输出总量、类型分布、状态分布，以及 `theme:*`、`tag:*`、`source:*` 统计行。

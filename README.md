@@ -192,6 +192,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo stats
 python3 -m implementations.python.kg --repo /path/to/content-repo export document-list
 python3 -m implementations.python.kg --repo /path/to/content-repo export manifest
 python3 -m implementations.python.kg --repo /path/to/content-repo export change-list
+python3 -m implementations.python.kg --repo /path/to/content-repo export asset-list
 ```
 
 `list` 与 `search` 当前已支持：
@@ -219,6 +220,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo export change-
 - `document-list`：按路径排序的当前文档快照
 - `manifest`：带 `generated_at` 与 `total` 的整体快照
 - `change-list`：按 `updated_at` 倒序排列的当前变更视图
+- `asset-list`：按路径排序的资源清单，覆盖仓库级与项目级资源
 
 ### 项目远端操作
 

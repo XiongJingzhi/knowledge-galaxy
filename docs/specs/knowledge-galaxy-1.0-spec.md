@@ -170,6 +170,8 @@ Note 是最通用的长期知识单元，用于承载独立笔记内容。
   复制到 `projects/atlas/assets/<filename>`
 - `import asset --file /path/to/file --project atlas --name hero.png`：
   复制到 `projects/atlas/assets/hero.png`
+- `export asset-list`：
+  导出当前仓库下的资源清单，覆盖 `assets/` 与 `projects/*/assets/`
 
 当前约束：
 
@@ -270,6 +272,7 @@ CLI 可执行名为 `kg`。
 - `export document-list`
 - `export manifest`
 - `export change-list`
+- `export asset-list`
 - `project add-remote`
 - `project fetch`
 - `project push`
@@ -293,13 +296,13 @@ CLI 可执行名为 `kg`。
 - 成功时输出尽量短且可脚本化
 - 创建类命令输出相对于仓库根目录的目标路径
 - 失败时在 stderr 输出单行错误，并以非零状态码退出
-- `export` 输出 JSON，其中 `document-list` 返回路径排序结果，`manifest` 返回整体快照，`change-list` 返回按 `updated_at` 倒序排列的当前变更视图
+- `export` 输出 JSON，其中 `document-list` 返回路径排序结果，`manifest` 返回整体快照，`change-list` 返回按 `updated_at` 倒序排列的当前变更视图，`asset-list` 返回当前资源清单
 
 ### 8.4 当前仍未实现
 
 以下能力仍在 1.0 计划中，但截至 2026-03-13 尚未落地：
 
-- 更完整的资源生命周期工作流，例如资源清单和去重策略
+- 更完整的资源生命周期工作流，例如去重策略
 
 ## 9. 文档与实现对齐原则
 

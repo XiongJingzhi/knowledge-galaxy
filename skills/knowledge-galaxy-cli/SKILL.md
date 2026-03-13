@@ -192,6 +192,7 @@ python3 -m implementations.python.kg --repo /path/to/content-repo stats
 python3 -m implementations.python.kg --repo /path/to/content-repo export document-list
 python3 -m implementations.python.kg --repo /path/to/content-repo export manifest
 python3 -m implementations.python.kg --repo /path/to/content-repo export change-list
+python3 -m implementations.python.kg --repo /path/to/content-repo export asset-list
 ```
 
 ### 管理项目远端

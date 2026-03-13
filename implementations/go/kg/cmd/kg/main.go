@@ -902,6 +902,14 @@ func cmdExport(repoRoot string, args []string) int {
 		}
 		fmt.Println(string(payload))
 		return 0
+	case "asset-list":
+		payload, err := json.MarshalIndent(exportAssetList(repoRoot), "", "  ")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return 1
+		}
+		fmt.Println(string(payload))
+		return 0
 	default:
 		fmt.Fprintln(os.Stderr, "Unsupported export type")
 		return 1
@@ -943,6 +951,53 @@ func exportChangeList(idx []Document) []map[string]string {
 			"updated_at": d.Updated,
 		})
 	}
+	return out
+}
+
+func exportAssetList(repoRoot string) []map[string]any {
+	var out []map[string]any
+	repoAssets := filepath.Join(repoRoot, "assets")
+	if info, err := os.Stat(repoAssets); err == nil && info.IsDir() {
+		_ = filepath.WalkDir(repoAssets, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			st, statErr := d.Info()
+			if statErr != nil {
+				return nil
+			}
+			out = append(out, map[string]any{
+				"path":       relPath(repoRoot, path),
+				"scope":      "repo",
+				"size_bytes": st.Size(),
+			})
+			return nil
+		})
+	}
+	projectAssets, _ := filepath.Glob(filepath.Join(repoRoot, "projects", "*", "assets"))
+	sort.Strings(projectAssets)
+	for _, assetRoot := range projectAssets {
+		project := filepath.Base(filepath.Dir(assetRoot))
+		_ = filepath.WalkDir(assetRoot, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			st, statErr := d.Info()
+			if statErr != nil {
+				return nil
+			}
+			out = append(out, map[string]any{
+				"path":       relPath(repoRoot, path),
+				"scope":      "project",
+				"project":    project,
+				"size_bytes": st.Size(),
+			})
+			return nil
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i]["path"].(string) < out[j]["path"].(string)
+	})
 	return out
 }
 
