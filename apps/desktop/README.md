@@ -91,6 +91,7 @@ npm run build
 - `ci.yml` 会执行桌面端组件测试、Tauri Rust 后端 `cargo check` 和桌面 bundle 构建
 - `integration.yml` 会构建桌面端 Tauri bundle 并上传 artifact
 - `release.yml` 只会把桌面端安装包级产物纳入 nightly 发布物，不会直接发布 bundle 内部动态库或解包目录文件
+- workflow 里的 GitHub Actions 已升级到当前主版本，Go setup 也显式关闭了默认缓存发现，避免根目录缺少 `go.sum` 时出现无效警告
 
 ## 后续方向
 

@@ -145,6 +145,7 @@ GitHub Actions 当前拆成三个工作流：
 - `release.yml`：在推送到 `main` 或手动触发时重新构建 nightly 所需产物，并更新固定的 `Nightly` 预发布版本
 
 Nightly 预发布当前会包含 Go、Rust 以及桌面端安装包级产物；桌面端只发布 `.dmg`、`.deb`、`.rpm`、`.AppImage`、`.msi`、`.exe` 这类最终交付文件，不再直接暴露 bundle 内部动态库。
+这些 workflow 已经统一升级到当前 action 主版本，并在 Go setup 中关闭默认缓存发现，避免仓库根目录不存在 `go.sum` 时产生无效告警。
 
 ## 直接入口
 
