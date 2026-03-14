@@ -147,6 +147,17 @@ describe("App", () => {
     expect(screen.queryByText("当前区段")).not.toBeInTheDocument();
   });
 
+  it("renders the home screen as a dashboard workspace", async () => {
+    render(<App />);
+
+    await screen.findByDisplayValue("/tmp/default-repo");
+
+    expect(screen.getByText("搜索、概览与快捷操作")).toBeInTheDocument();
+    expect(screen.getByText("工作台摘要")).toBeInTheDocument();
+    expect(screen.getByText("最近动态")).toBeInTheDocument();
+    expect(screen.getByText("仓库状态")).toBeInTheDocument();
+  });
+
   it("navigates from home search to documents with the query applied", async () => {
     render(<App />);
 

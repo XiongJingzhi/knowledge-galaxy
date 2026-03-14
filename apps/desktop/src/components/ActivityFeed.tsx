@@ -1,11 +1,21 @@
 import type { ActivityItem } from "../lib/desktop-ui";
 
-export function ActivityFeed({ items }: { items: ActivityItem[] }) {
+export function ActivityFeed({
+  items,
+  title = "最近操作",
+  subtitle,
+  className = "",
+}: {
+  items: ActivityItem[];
+  title?: string;
+  subtitle?: string;
+  className?: string;
+}) {
   return (
-    <section className="activity-feed panel">
+    <section className={`activity-feed panel ${className}`.trim()}>
       <div className="panel__header">
-        <h3>最近操作</h3>
-        <span>{items.length ? `${items.length} 条` : "等待操作"}</span>
+        <h3>{title}</h3>
+        <span>{subtitle ?? (items.length ? `${items.length} 条` : "等待操作")}</span>
       </div>
       <div className="activity-feed__list">
         {items.length ? (

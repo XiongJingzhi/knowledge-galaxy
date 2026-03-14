@@ -17,7 +17,7 @@ const detail: DocumentDetail = {
   tags: ["idea"],
   source: ["field-notes"],
   summary: "short",
-  body: "body",
+  body: "# Idea\n\n- alpha\n- beta\n\n**bold** body",
   gitWorktree: "",
 };
 
@@ -73,5 +73,14 @@ describe("DocumentEditor", () => {
       expect(globalThis.navigator.clipboard.writeText).toHaveBeenCalledWith("notes/idea.md");
     });
     expect(screen.getByRole("button", { name: "已复制路径" })).toBeInTheDocument();
+  });
+
+  it("renders structured markdown in the preview panel", () => {
+    render(<DocumentEditor document={detail} onSave={() => undefined} />);
+
+    expect(screen.getByRole("heading", { name: "Idea", level: 1 })).toBeInTheDocument();
+    expect(screen.getByText("alpha")).toBeInTheDocument();
+    expect(screen.getByText("beta")).toBeInTheDocument();
+    expect(screen.queryByText("# Idea")).not.toBeInTheDocument();
   });
 });

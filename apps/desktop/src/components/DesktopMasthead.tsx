@@ -14,27 +14,25 @@ export function DesktopMasthead({
 }) {
   return (
     <section className="desktop-masthead" aria-label="知识总览">
-      <div className="desktop-masthead__core">
-        <div className="desktop-masthead__headline">
+      <div className="desktop-masthead__headline">
+        <div className="desktop-masthead__title-block">
           <span className="eyebrow">KNOWLEDGE GALAXY</span>
           <h3>知识总览</h3>
           <p>查看仓库状态、近期变化和当前页面的关键数据。</p>
         </div>
-      </div>
-      <div className="desktop-masthead__orbit">
         <article className="desktop-masthead__context">
           <span className="eyebrow">当前页面</span>
           <strong>{sectionTitle}</strong>
           <p>{sectionDescription}</p>
         </article>
-        <div className="desktop-masthead__metrics">
-          {metrics.map((metric) => (
-            <article key={`${section}-${metric.label}`} className="desktop-metric">
-              <span className="desktop-metric__label">{metric.label}</span>
-              <strong className="desktop-metric__value">{metric.value}</strong>
-            </article>
-          ))}
-        </div>
+      </div>
+      <div className="desktop-masthead__metrics">
+        {metrics.map((metric) => (
+          <article key={`${section}-${metric.label}`} className="desktop-metric">
+            <span className="desktop-metric__label">{metric.label}</span>
+            <strong className="desktop-metric__value">{metric.value}</strong>
+          </article>
+        ))}
       </div>
     </section>
   );
