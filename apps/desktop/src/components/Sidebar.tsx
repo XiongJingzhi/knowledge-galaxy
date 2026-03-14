@@ -24,7 +24,7 @@ export function Sidebar({
           <GalaxyLogo />
         </div>
         <h1>知识星系</h1>
-        <p>结构化首页负责概览、搜索与进入功能页，具体操作都收进二级工作区。</p>
+        <p>浏览文档、创建条目、整理资源，并把知识库和项目仓库保持同步。</p>
       </div>
       <nav className="sidebar__nav">
         {(Object.keys(labels) as NavSection[]).map((item, index) => (

@@ -115,7 +115,7 @@ describe("App", () => {
   it("opens a native directory picker and switches to the selected repository", async () => {
     render(<App />);
 
-    await screen.findAllByText("结构总控台");
+    await screen.findByText("知识总览");
 
     fireEvent.click(screen.getByRole("button", { name: "打开目录" }));
 
@@ -130,10 +130,21 @@ describe("App", () => {
 
     await screen.findByDisplayValue("/tmp/default-repo");
 
-    expect(screen.getByText("结构总控台")).toBeInTheDocument();
+    expect(screen.getByText("知识总览")).toBeInTheDocument();
     expect(screen.getByLabelText("全局搜索")).toBeInTheDocument();
     expect(screen.getAllByText("进入文档页").length).toBeGreaterThan(0);
     expect(screen.queryByText("文档浏览")).not.toBeInTheDocument();
+  });
+
+  it("keeps design principles out of the product copy", async () => {
+    render(<App />);
+
+    await screen.findByDisplayValue("/tmp/default-repo");
+
+    expect(screen.queryByText("结构化首页负责概览、搜索与进入功能页，具体操作都收进二级工作区。")).not.toBeInTheDocument();
+    expect(screen.queryByText("00 · 首页总览")).not.toBeInTheDocument();
+    expect(screen.queryByText("用一屏完成仓库切换、全局搜索与功能页分发，先看全局，再进入操作区。")).not.toBeInTheDocument();
+    expect(screen.queryByText("当前区段")).not.toBeInTheDocument();
   });
 
   it("navigates from home search to documents with the query applied", async () => {
@@ -169,7 +180,7 @@ describe("App", () => {
   it("removes duplicated repository status copy from the shell", async () => {
     render(<App />);
 
-    await screen.findAllByText("结构总控台");
+    await screen.findByText("知识总览");
 
     expect(screen.queryByText("ACTIVE REPOSITORY")).not.toBeInTheDocument();
     expect(screen.queryByText("当前仓库")).not.toBeInTheDocument();
@@ -194,10 +205,10 @@ describe("App", () => {
 
     await screen.findByDisplayValue("/tmp/default-repo");
 
-    expect(screen.getByText("结构总控台")).toBeInTheDocument();
-    expect(screen.getByText("当前区段")).toBeInTheDocument();
-    expect(screen.getAllByText(/首页总览/).length).toBeGreaterThan(0);
-    expect(screen.getByText("知识结构总量")).toBeInTheDocument();
+    expect(screen.getByText("知识总览")).toBeInTheDocument();
+    expect(screen.getByText("当前页面")).toBeInTheDocument();
+    expect(screen.getByText("搜索内容、查看仓库概况并进入常用操作。")).toBeInTheDocument();
+    expect(screen.getByText("文档总数")).toBeInTheDocument();
   });
 
   it("shows an empty-state message when the current document view has no results", async () => {
