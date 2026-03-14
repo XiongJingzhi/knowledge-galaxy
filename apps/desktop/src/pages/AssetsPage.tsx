@@ -1,4 +1,4 @@
-import type { AssetRecord } from "../lib/types";
+import type { AssetRecord, KnowledgeMigrationImportResult, KnowledgeMigrationPreview } from "../lib/types";
 import { AssetTable } from "../components/AssetTable";
 
 export function AssetsPage({
@@ -7,10 +7,17 @@ export function AssetsPage({
   assetForm,
   assetProjectFilter,
   assetScope,
+  migrationForm,
+  migrationImportResult,
+  migrationPreview,
   onAssetFormChange,
   onChooseAssetFile,
+  onChooseKnowledgeSource,
+  onAnalyzeKnowledgeMigration,
+  onImportKnowledgeMigration,
   onAssetProjectFilterChange,
   onAssetScopeChange,
+  onMigrationFormChange,
   onSelectAsset,
   onImportAsset,
 }: {
@@ -23,10 +30,20 @@ export function AssetsPage({
   };
   assetProjectFilter: string;
   assetScope: "all" | "repo" | "project";
+  migrationForm: {
+    filePath: string;
+    model: string;
+  };
+  migrationImportResult: KnowledgeMigrationImportResult | null;
+  migrationPreview: KnowledgeMigrationPreview | null;
   onAssetFormChange: (field: "filePath" | "targetName" | "project", value: string) => void;
   onChooseAssetFile: () => void;
+  onChooseKnowledgeSource: () => void;
+  onAnalyzeKnowledgeMigration: () => void;
+  onImportKnowledgeMigration: () => void;
   onAssetProjectFilterChange: (value: string) => void;
   onAssetScopeChange: (value: "all" | "repo" | "project") => void;
+  onMigrationFormChange: (field: "filePath" | "model", value: string) => void;
   onSelectAsset: (path: string) => void;
   onImportAsset: () => void;
 }) {
@@ -138,6 +155,106 @@ export function AssetsPage({
           <button className="primary-button" type="button" onClick={onImportAsset}>
             导入资源
           </button>
+        </section>
+        <section className="panel panel--form">
+          <div className="panel__header">
+            <h3>知识迁移</h3>
+            <span>md / zip + Ollama</span>
+          </div>
+          <div className="create-context">
+            <strong>迁移工作台</strong>
+            <span>导入外部 Markdown 或压缩包，先生成分类预览，再确认写入知识星系。</span>
+          </div>
+          <div className="form-grid">
+            <label className="field field--wide">
+              <span>知识源文件</span>
+              <div className="asset-file-picker">
+                <input
+                  readOnly
+                  value={migrationForm.filePath}
+                  onChange={(event) => onMigrationFormChange("filePath", event.currentTarget.value)}
+                />
+                <button className="secondary-button" type="button" onClick={onChooseKnowledgeSource}>
+                  选择知识源
+                </button>
+              </div>
+            </label>
+            <label className="field">
+              <span>Ollama 模型</span>
+              <input
+                value={migrationForm.model}
+                onChange={(event) => onMigrationFormChange("model", event.currentTarget.value)}
+              />
+            </label>
+          </div>
+          <div className="button-row">
+            <button className="secondary-button" type="button" onClick={onAnalyzeKnowledgeMigration}>
+              生成迁移预览
+            </button>
+            <button
+              className="primary-button"
+              type="button"
+              onClick={onImportKnowledgeMigration}
+              disabled={!migrationPreview?.drafts.length}
+            >
+              导入知识
+            </button>
+          </div>
+          {migrationPreview ? (
+            <div className="migration-preview">
+              <div className="detail-panel__header">
+                <h3>迁移预览</h3>
+                <span>{migrationPreview.drafts.length} 条候选知识</span>
+              </div>
+              {migrationPreview.warnings.length ? (
+                <ul className="migration-preview__warnings">
+                  {migrationPreview.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="migration-preview__list">
+                {migrationPreview.drafts.map((draft) => (
+                  <article className="migration-preview__item" key={`${draft.path}-${draft.originLabel}`}>
+                    <div className="migration-preview__heading">
+                      <strong>{draft.title}</strong>
+                      <span>{draft.type}</span>
+                    </div>
+                    <p>{draft.summary}</p>
+                    <div className="migration-preview__meta">
+                      <code>{draft.path}</code>
+                      <span>{draft.originLabel}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {migrationImportResult ? (
+            <div className="migration-preview migration-preview--result">
+              <div className="detail-panel__header">
+                <h3>已导入知识</h3>
+                <span>{migrationImportResult.imported} 篇文档</span>
+              </div>
+              {migrationImportResult.warnings.length ? (
+                <ul className="migration-preview__warnings">
+                  {migrationImportResult.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="migration-preview__list">
+                {migrationImportResult.createdPaths.map((path) => (
+                  <article className="migration-preview__item" key={path}>
+                    <div className="migration-preview__meta">
+                      <code>{path}</code>
+                      <span>已写入知识星系</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

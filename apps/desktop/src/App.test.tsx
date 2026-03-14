@@ -6,12 +6,15 @@ vi.mock("./lib/api", async () => {
   const actual = await vi.importActual<typeof import("./lib/api")>("./lib/api");
   return {
     ...actual,
+    analyzeKnowledgeMigration: vi.fn(),
     chooseAssetFile: vi.fn(),
+    chooseKnowledgeSourceFile: vi.fn(),
     chooseRepoDirectory: vi.fn(),
     createDocument: vi.fn(),
     getDocument: vi.fn(),
     getRecentRepos: vi.fn(),
     getStats: vi.fn(),
+    importKnowledgeMigration: vi.fn(),
     importAsset: vi.fn(),
     listAssets: vi.fn(),
     listDocuments: vi.fn(),
@@ -41,6 +44,7 @@ function arrangeApi() {
   ]);
   mockedApi.listDocuments.mockResolvedValue([]);
   mockedApi.chooseAssetFile.mockResolvedValue(null);
+  mockedApi.chooseKnowledgeSourceFile.mockResolvedValue(null);
   mockedApi.chooseRepoDirectory.mockResolvedValue("/tmp/chosen-repo");
   mockedApi.openRepoDirectory.mockResolvedValue(undefined);
   mockedApi.searchDocuments.mockResolvedValue([]);
@@ -72,6 +76,16 @@ function arrangeApi() {
   });
   mockedApi.runValidate.mockResolvedValue({ ok: true, errors: [], raw: "OK" });
   mockedApi.runExport.mockResolvedValue({ kind: "manifest", content: "{}" });
+  mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
+    sourceLabel: "knowledge.zip",
+    drafts: [],
+    warnings: [],
+  });
+  mockedApi.importKnowledgeMigration.mockResolvedValue({
+    imported: 0,
+    createdPaths: [],
+    warnings: [],
+  });
   mockedApi.getDocument.mockImplementation(async (path) => ({
     path,
     id: path.includes("ship-note") ? "note-ship" : "note-1",
@@ -274,6 +288,118 @@ describe("App", () => {
 
     expect(await screen.findByText("资源索引台")).toBeInTheDocument();
     expect(screen.getByText("导入面板")).toBeInTheDocument();
+    expect(screen.getByText("知识迁移")).toBeInTheDocument();
+  });
+
+  it("chooses a knowledge source and renders migration preview drafts", async () => {
+    mockedApi.chooseKnowledgeSourceFile.mockResolvedValue("/tmp/knowledge-bundle.zip");
+    mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
+      sourceLabel: "knowledge-bundle.zip",
+      drafts: [
+        {
+          title: "Architecture Notes",
+          type: "note",
+          summary: "Imported architecture note",
+          body: "## Summary\n\nMigrated from zip.",
+          theme: ["knowledge"],
+          tags: ["migration"],
+          source: ["knowledge-bundle.zip"],
+          status: "inbox",
+          path: "notes/architecture-notes.md",
+          originLabel: "notes/architecture.md",
+        },
+      ],
+      warnings: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "选择知识源" }));
+
+    await waitFor(() => {
+      expect(mockedApi.chooseKnowledgeSourceFile).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByDisplayValue("/tmp/knowledge-bundle.zip")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "生成迁移预览" }));
+
+    await waitFor(() => {
+      expect(mockedApi.analyzeKnowledgeMigration).toHaveBeenCalledWith({
+        filePath: "/tmp/knowledge-bundle.zip",
+        model: "llama3.2",
+      });
+    });
+
+    expect(await screen.findByText("Architecture Notes")).toBeInTheDocument();
+    expect(screen.getByText("notes/architecture-notes.md")).toBeInTheDocument();
+    expect(screen.getByText("Imported architecture note")).toBeInTheDocument();
+  });
+
+  it("imports migration drafts and records imported knowledge activity", async () => {
+    mockedApi.chooseKnowledgeSourceFile.mockResolvedValue("/tmp/import.md");
+    mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
+      sourceLabel: "import.md",
+      drafts: [
+        {
+          title: "Imported Review",
+          type: "review",
+          summary: "Weekly migration review",
+          body: "## What Happened\n\nImported content.",
+          theme: ["ops"],
+          tags: ["weekly"],
+          source: ["import.md"],
+          status: "inbox",
+          path: "reviews/imported-review.md",
+          originLabel: "import.md",
+        },
+      ],
+      warnings: ["zip skipped binary attachments"],
+    });
+    mockedApi.importKnowledgeMigration.mockResolvedValue({
+      imported: 1,
+      createdPaths: ["reviews/imported-review.md"],
+      warnings: ["zip skipped binary attachments"],
+    });
+    mockedApi.listDocuments.mockResolvedValue([
+      {
+        path: "reviews/imported-review.md",
+        title: "Imported Review",
+        type: "review",
+        status: "inbox",
+      },
+    ]);
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择知识源" }));
+    await screen.findByDisplayValue("/tmp/import.md");
+    fireEvent.click(screen.getByRole("button", { name: "生成迁移预览" }));
+    await screen.findByText("Imported Review");
+
+    fireEvent.click(screen.getByRole("button", { name: "导入知识" }));
+
+    await waitFor(() => {
+      expect(mockedApi.importKnowledgeMigration).toHaveBeenCalledWith({
+        filePath: "/tmp/import.md",
+        model: "llama3.2",
+        drafts: [
+          expect.objectContaining({
+            title: "Imported Review",
+            path: "reviews/imported-review.md",
+            type: "review",
+          }),
+        ],
+      });
+    });
+
+    expect(await screen.findByText("已导入知识")).toBeInTheDocument();
+    expect(screen.getAllByText("reviews/imported-review.md").length).toBeGreaterThan(0);
   });
 
   it("chooses a local asset file and fills the import form", async () => {

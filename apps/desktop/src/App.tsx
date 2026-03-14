@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
+  analyzeKnowledgeMigration,
   chooseAssetFile,
+  chooseKnowledgeSourceFile,
   chooseRepoDirectory,
   createDocument,
   getDocument,
   getRecentRepos,
   getStats,
+  importKnowledgeMigration,
   importAsset,
   listAssets,
   listDocuments,
@@ -34,7 +37,15 @@ import { HomePage } from "./pages/HomePage";
 import { OpsPage } from "./pages/OpsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import type { ActivityItem, OverviewCard } from "./lib/desktop-ui";
-import type { AssetRecord, DocumentDetail, DocumentFilters, DocumentListItem, NavSection } from "./lib/types";
+import type {
+  AssetRecord,
+  DocumentDetail,
+  DocumentFilters,
+  DocumentListItem,
+  KnowledgeMigrationImportResult,
+  KnowledgeMigrationPreview,
+  NavSection,
+} from "./lib/types";
 
 const defaultDetail: DocumentDetail = {
   path: "",
@@ -127,6 +138,12 @@ function DesktopAppShell() {
     targetName: "",
     project: "",
   });
+  const [migrationForm, setMigrationForm] = useState({
+    filePath: "",
+    model: "llama3.2",
+  });
+  const [migrationPreview, setMigrationPreview] = useState<KnowledgeMigrationPreview | null>(null);
+  const [migrationImportResult, setMigrationImportResult] = useState<KnowledgeMigrationImportResult | null>(null);
   const [assetScope, setAssetScope] = useState<"all" | "repo" | "project">("all");
   const [assetProjectFilter, setAssetProjectFilter] = useState("");
   const [remoteForm, setRemoteForm] = useState({
@@ -348,6 +365,49 @@ function DesktopAppShell() {
     }
   };
 
+  const handleChooseKnowledgeSource = async () => {
+    try {
+      const selected = await chooseKnowledgeSourceFile();
+      if (!selected) {
+        return;
+      }
+      setMigrationForm((current) => ({ ...current, filePath: selected }));
+      setMigrationPreview(null);
+      setMigrationImportResult(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const handleAnalyzeKnowledgeMigration = async () => {
+    try {
+      const preview = await analyzeKnowledgeMigration(migrationForm);
+      setMigrationPreview(preview);
+      setMigrationImportResult(null);
+      recordActivity("已生成迁移预览", preview.sourceLabel, `${preview.drafts.length} 条候选知识`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const handleImportKnowledgeMigration = async () => {
+    try {
+      const result = await importKnowledgeMigration({
+        ...migrationForm,
+        drafts: migrationPreview?.drafts ?? [],
+      });
+      setMigrationImportResult(result);
+      await refreshOverview(repo?.path);
+      recordActivity(
+        "已导入知识",
+        result.createdPaths[0] ?? migrationForm.filePath,
+        `新增 ${result.imported} 篇文档`,
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
   const handleExport = async (kind: string) => {
     try {
       const next = await runExport(kind);
@@ -394,6 +454,10 @@ function DesktopAppShell() {
 
   const updateAssetForm = (field: "filePath" | "targetName" | "project", value: string) => {
     setAssetForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateMigrationForm = (field: "filePath" | "model", value: string) => {
+    setMigrationForm((current) => ({ ...current, [field]: value }));
   };
 
   const updateRemoteForm = (field: "name" | "url" | "remote" | "branch", value: string) => {
@@ -489,10 +553,17 @@ function DesktopAppShell() {
                   assetForm={assetForm}
                   assetProjectFilter={assetProjectFilter}
                   assetScope={assetScope}
+                  migrationForm={migrationForm}
+                  migrationImportResult={migrationImportResult}
+                  migrationPreview={migrationPreview}
                   onAssetFormChange={updateAssetForm}
                   onChooseAssetFile={() => void handleChooseAssetFile()}
+                  onChooseKnowledgeSource={() => void handleChooseKnowledgeSource()}
+                  onAnalyzeKnowledgeMigration={() => void handleAnalyzeKnowledgeMigration()}
+                  onImportKnowledgeMigration={() => void handleImportKnowledgeMigration()}
                   onAssetProjectFilterChange={setAssetProjectFilter}
                   onAssetScopeChange={setAssetScope}
+                  onMigrationFormChange={updateMigrationForm}
                   onSelectAsset={setSelectedAssetPath}
                   onImportAsset={() => void handleImportAsset()}
                 />

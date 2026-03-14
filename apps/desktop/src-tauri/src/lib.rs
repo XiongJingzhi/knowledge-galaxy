@@ -70,6 +70,45 @@ pub struct AssetRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum KnowledgeMigrationSourceKind {
+    Markdown,
+    Zip,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeMigrationDraft {
+    title: String,
+    #[serde(rename = "type")]
+    document_type: String,
+    summary: String,
+    body: String,
+    theme: Vec<String>,
+    tags: Vec<String>,
+    source: Vec<String>,
+    status: String,
+    path: String,
+    origin_label: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeMigrationPreview {
+    source_label: String,
+    drafts: Vec<KnowledgeMigrationDraft>,
+    warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct KnowledgeMigrationImportResult {
+    imported: usize,
+    created_paths: Vec<String>,
+    warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ExportSnapshot {
     kind: String,
     content: String,
@@ -131,6 +170,21 @@ pub struct ImportAssetPayload {
     file_path: String,
     target_name: Option<String>,
     project: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyzeKnowledgeMigrationPayload {
+    file_path: String,
+    model: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportKnowledgeMigrationPayload {
+    file_path: String,
+    model: String,
+    drafts: Vec<KnowledgeMigrationDraft>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -197,6 +251,49 @@ enum FrontmatterValue {
     List(Vec<String>),
 }
 
+#[derive(Debug, Clone)]
+struct KnowledgeMigrationEntry {
+    origin_label: String,
+    body: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawKnowledgeMigrationDraft {
+    title: String,
+    #[serde(rename = "type")]
+    document_type: String,
+    summary: String,
+    body: String,
+    #[serde(default)]
+    theme: Vec<String>,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    source: Vec<String>,
+    #[serde(default = "default_migration_status")]
+    status: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawKnowledgeMigrationResponse {
+    drafts: Vec<RawKnowledgeMigrationDraft>,
+    #[serde(default)]
+    warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct OllamaGenerateRequest {
+    model: String,
+    prompt: String,
+    stream: bool,
+    format: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct OllamaGenerateResponse {
+    response: String,
+}
+
 fn workspace_root() -> PathBuf {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     manifest_dir
@@ -205,6 +302,218 @@ fn workspace_root() -> PathBuf {
         .and_then(Path::parent)
         .expect("workspace root should exist")
         .to_path_buf()
+}
+
+fn default_migration_status() -> String {
+    "inbox".to_string()
+}
+
+fn detect_migration_source_kind(path: &Path) -> Result<KnowledgeMigrationSourceKind, String> {
+    match path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("md" | "markdown" | "txt") => Ok(KnowledgeMigrationSourceKind::Markdown),
+        Some("zip") => Ok(KnowledgeMigrationSourceKind::Zip),
+        _ => Err("知识迁移仅支持 md、markdown、txt 或 zip".to_string()),
+    }
+}
+
+fn migration_slugify(value: &str) -> String {
+    let mut slug = String::new();
+    let mut previous_dash = false;
+    for ch in value.chars() {
+        let lower = ch.to_ascii_lowercase();
+        if lower.is_ascii_alphanumeric() {
+            slug.push(lower);
+            previous_dash = false;
+        } else if !previous_dash {
+            slug.push('-');
+            previous_dash = true;
+        }
+    }
+    slug.trim_matches('-').to_string()
+}
+
+fn extract_migration_entries_from_zip_bytes(bytes: &[u8]) -> Result<Vec<KnowledgeMigrationEntry>, String> {
+    let reader = std::io::Cursor::new(bytes);
+    let mut archive = zip::ZipArchive::new(reader).map_err(|err| err.to_string())?;
+    let mut entries = Vec::new();
+    for index in 0..archive.len() {
+        let mut file = archive.by_index(index).map_err(|err| err.to_string())?;
+        if !file.is_file() {
+            continue;
+        }
+        let name = file.name().to_string();
+        let extension = Path::new(&name)
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase());
+        if !matches!(extension.as_deref(), Some("md" | "markdown" | "txt")) {
+            continue;
+        }
+        let mut body = String::new();
+        std::io::Read::read_to_string(&mut file, &mut body).map_err(|err| err.to_string())?;
+        if body.trim().is_empty() {
+            continue;
+        }
+        entries.push(KnowledgeMigrationEntry {
+            origin_label: name,
+            body,
+        });
+    }
+    Ok(entries)
+}
+
+fn migration_relative_path(document_type: &str, slug: &str) -> PathBuf {
+    match document_type {
+        "decision" => PathBuf::from("decisions").join(format!("{slug}.md")),
+        "review" => PathBuf::from("reviews").join(format!("{slug}.md")),
+        "reference" => PathBuf::from("references").join(format!("{slug}.md")),
+        _ => PathBuf::from("notes").join(format!("{slug}.md")),
+    }
+}
+
+fn unique_migration_target_path(repo_root: &Path, document_type: &str, slug: &str) -> PathBuf {
+    let base_slug = if slug.trim().is_empty() {
+        "migrated-note".to_string()
+    } else {
+        slug.to_string()
+    };
+    let mut attempt = 1usize;
+    loop {
+        let candidate_slug = if attempt == 1 {
+            base_slug.clone()
+        } else {
+            format!("{base_slug}-{}", attempt)
+        };
+        let relative = migration_relative_path(document_type, &candidate_slug);
+        if !repo_root.join(&relative).exists() {
+            return relative;
+        }
+        attempt += 1;
+    }
+}
+
+fn migration_document_id() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    format!("migrated-{nanos}")
+}
+
+fn parse_migration_model_response(content: &str, origin_label: &str) -> Result<KnowledgeMigrationPreview, String> {
+    let parsed: RawKnowledgeMigrationResponse = serde_json::from_str(content).map_err(|err| err.to_string())?;
+    let drafts = parsed
+        .drafts
+        .into_iter()
+        .map(|draft| {
+            let document_type = match draft.document_type.as_str() {
+                "decision" | "review" | "reference" => draft.document_type,
+                _ => "note".to_string(),
+            };
+            let slug = migration_slugify(&draft.title);
+            let path = migration_relative_path(&document_type, &slug)
+                .to_string_lossy()
+                .into_owned();
+            KnowledgeMigrationDraft {
+                title: draft.title,
+                document_type,
+                summary: draft.summary,
+                body: draft.body,
+                theme: draft.theme,
+                tags: draft.tags,
+                source: if draft.source.is_empty() {
+                    vec![origin_label.to_string()]
+                } else {
+                    draft.source
+                },
+                status: if draft.status.trim().is_empty() {
+                    default_migration_status()
+                } else {
+                    draft.status
+                },
+                path,
+                origin_label: origin_label.to_string(),
+            }
+        })
+        .collect();
+
+    Ok(KnowledgeMigrationPreview {
+        source_label: origin_label.to_string(),
+        drafts,
+        warnings: parsed.warnings,
+    })
+}
+
+fn ollama_response_schema() -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "drafts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "type": { "type": "string", "enum": ["note", "decision", "review", "reference"] },
+                        "summary": { "type": "string" },
+                        "body": { "type": "string" },
+                        "theme": { "type": "array", "items": { "type": "string" } },
+                        "tags": { "type": "array", "items": { "type": "string" } },
+                        "source": { "type": "array", "items": { "type": "string" } },
+                        "status": { "type": "string" }
+                    },
+                    "required": ["title", "type", "summary", "body"]
+                }
+            },
+            "warnings": {
+                "type": "array",
+                "items": { "type": "string" }
+            }
+        },
+        "required": ["drafts", "warnings"]
+    })
+}
+
+fn build_migration_prompt(entry: &KnowledgeMigrationEntry) -> String {
+    format!(
+        "你是 Knowledge Galaxy 的本地分类助手。\
+请把下面的外部知识源整理成 1 条适合知识星系的 Markdown 文档草稿。\
+仅允许 type 使用 note、decision、review、reference 其中之一。\
+summary 必须简短。body 必须是整理后的 Markdown 正文，不要包含 YAML frontmatter。\
+theme、tags、source 使用短字符串数组；如果没有就返回空数组。\
+status 默认 inbox。\
+输入来源: {origin}\n\n内容如下:\n{body}",
+        origin = entry.origin_label,
+        body = entry.body
+    )
+}
+
+fn call_ollama_for_migration(model: &str, entry: &KnowledgeMigrationEntry) -> Result<KnowledgeMigrationPreview, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(90))
+        .build()
+        .map_err(|err| err.to_string())?;
+    let request = OllamaGenerateRequest {
+        model: model.to_string(),
+        prompt: build_migration_prompt(entry),
+        stream: false,
+        format: ollama_response_schema(),
+    };
+    let response = client
+        .post("http://127.0.0.1:11434/api/generate")
+        .json(&request)
+        .send()
+        .map_err(|err| format!("调用 Ollama 失败: {err}"))?;
+    if !response.status().is_success() {
+        return Err(format!("Ollama 返回错误状态: {}", response.status()));
+    }
+    let payload: OllamaGenerateResponse = response.json().map_err(|err| err.to_string())?;
+    parse_migration_model_response(&payload.response, &entry.origin_label)
 }
 
 fn app_config_path(app: &tauri::AppHandle) -> PathBuf {
@@ -628,6 +937,80 @@ fn run_cli_with_state(
     run_python_cli(&workspace, &repo, extra, stdin)
 }
 
+fn read_migration_entries(path: &Path) -> Result<(String, Vec<KnowledgeMigrationEntry>, Vec<String>), String> {
+    let source_label = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("migration-source")
+        .to_string();
+    match detect_migration_source_kind(path)? {
+        KnowledgeMigrationSourceKind::Markdown => {
+            let body = fs::read_to_string(path).map_err(|err| err.to_string())?;
+            if body.trim().is_empty() {
+                return Err("知识源文件为空".to_string());
+            }
+            Ok((
+                source_label.clone(),
+                vec![KnowledgeMigrationEntry {
+                    origin_label: source_label,
+                    body,
+                }],
+                Vec::new(),
+            ))
+        }
+        KnowledgeMigrationSourceKind::Zip => {
+            let bytes = fs::read(path).map_err(|err| err.to_string())?;
+            let entries = extract_migration_entries_from_zip_bytes(&bytes)?;
+            if entries.is_empty() {
+                return Err("zip 中没有可处理的 Markdown 或文本文件".to_string());
+            }
+            let archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|err| err.to_string())?;
+            let skipped = archive.len().saturating_sub(entries.len());
+            let mut warnings = Vec::new();
+            if skipped > 0 {
+                warnings.push(format!("跳过 {skipped} 个非文本条目"));
+            }
+            Ok((source_label, entries, warnings))
+        }
+    }
+}
+
+fn render_migration_document(draft: &KnowledgeMigrationDraft, relative_path: &Path) -> String {
+    let timestamp = current_timestamp();
+    let date = timestamp.chars().take(10).collect::<String>();
+    let slug = relative_path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("migrated-note")
+        .to_string();
+    render_document(&DocumentDetail {
+        path: relative_path.to_string_lossy().into_owned(),
+        id: migration_document_id(),
+        document_type: draft.document_type.clone(),
+        slug,
+        created_at: timestamp.clone(),
+        updated_at: timestamp,
+        title: draft.title.clone(),
+        status: if draft.status.trim().is_empty() {
+            default_migration_status()
+        } else {
+            draft.status.clone()
+        },
+        date: if draft.document_type == "review" {
+            date
+        } else {
+            String::new()
+        },
+        theme: draft.theme.clone(),
+        project: Vec::new(),
+        tags: draft.tags.clone(),
+        source: draft.source.clone(),
+        summary: draft.summary.clone(),
+        body: draft.body.clone(),
+        git_worktree: String::new(),
+    })
+}
+
 #[tauri::command]
 fn select_repo(
     path: Option<String>,
@@ -883,6 +1266,66 @@ fn import_asset(
 }
 
 #[tauri::command]
+fn analyze_knowledge_migration(
+    payload: AnalyzeKnowledgeMigrationPayload,
+    state: tauri::State<'_, AppState>,
+) -> Result<KnowledgeMigrationPreview, String> {
+    if payload.model.trim().is_empty() {
+        return Err("迁移需要指定 Ollama 模型".to_string());
+    }
+    let source_path = PathBuf::from(&payload.file_path);
+    let (source_label, entries, mut warnings) = read_migration_entries(&source_path)?;
+    let mut drafts = Vec::new();
+    for entry in &entries {
+        let preview = call_ollama_for_migration(&payload.model, entry)?;
+        drafts.extend(preview.drafts);
+        warnings.extend(preview.warnings);
+    }
+    let repo = repo_from_state(&state)?;
+    for draft in &mut drafts {
+        let slug = migration_slugify(&draft.title);
+        let relative = unique_migration_target_path(&repo, &draft.document_type, &slug);
+        draft.path = relative.to_string_lossy().into_owned();
+    }
+    Ok(KnowledgeMigrationPreview {
+        source_label,
+        drafts,
+        warnings,
+    })
+}
+
+#[tauri::command]
+fn import_knowledge_migration(
+    payload: ImportKnowledgeMigrationPayload,
+    state: tauri::State<'_, AppState>,
+) -> Result<KnowledgeMigrationImportResult, String> {
+    let repo = repo_from_state(&state)?;
+    if payload.drafts.is_empty() {
+        return Err("没有可导入的迁移草稿".to_string());
+    }
+    let mut created_paths = Vec::new();
+    for draft in payload.drafts {
+        let slug = migration_slugify(&draft.title);
+        let relative = unique_migration_target_path(&repo, &draft.document_type, &slug);
+        let absolute = repo.join(&relative);
+        if let Some(parent) = absolute.parent() {
+            fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+        }
+        fs::write(&absolute, render_migration_document(&draft, &relative)).map_err(|err| err.to_string())?;
+        created_paths.push(relative.to_string_lossy().into_owned());
+    }
+    Ok(KnowledgeMigrationImportResult {
+        imported: created_paths.len(),
+        created_paths,
+        warnings: if payload.file_path.trim().is_empty() || payload.model.trim().is_empty() {
+            Vec::new()
+        } else {
+            Vec::new()
+        },
+    })
+}
+
+#[tauri::command]
 fn get_stats(state: tauri::State<'_, AppState>) -> Result<StatsSnapshot, String> {
     let output = run_cli_with_state(&state, &["stats".to_string()], None)?;
     if !output.success {
@@ -1034,6 +1477,8 @@ pub fn run() {
             create_document,
             list_assets,
             import_asset,
+            analyze_knowledge_migration,
+            import_knowledge_migration,
             get_stats,
             run_validate,
             run_export,
@@ -1047,6 +1492,8 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
+    use zip::write::SimpleFileOptions;
 
     fn sample_detail() -> DocumentDetail {
         DocumentDetail {
@@ -1126,5 +1573,83 @@ mod tests {
         assert_eq!(loaded.recent_repos, vec!["/tmp/a", "/tmp/b"]);
 
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn detects_migration_source_kind_from_extension() {
+        assert_eq!(
+            detect_migration_source_kind(Path::new("/tmp/knowledge.md")).unwrap(),
+            KnowledgeMigrationSourceKind::Markdown
+        );
+        assert_eq!(
+            detect_migration_source_kind(Path::new("/tmp/archive.zip")).unwrap(),
+            KnowledgeMigrationSourceKind::Zip
+        );
+        assert!(detect_migration_source_kind(Path::new("/tmp/file.pdf")).is_err());
+    }
+
+    #[test]
+    fn extracts_only_supported_text_entries_from_zip() {
+        let mut buffer = Cursor::new(Vec::new());
+        {
+            let mut archive = zip::ZipWriter::new(&mut buffer);
+            archive
+                .start_file("notes/alpha.md", SimpleFileOptions::default())
+                .unwrap();
+            archive.write_all(b"# Alpha\n\nBody").unwrap();
+            archive
+                .start_file("notes/raw.txt", SimpleFileOptions::default())
+                .unwrap();
+            archive.write_all(b"plain text").unwrap();
+            archive
+                .start_file("images/logo.png", SimpleFileOptions::default())
+                .unwrap();
+            archive.write_all(&[137, 80, 78, 71]).unwrap();
+            archive.finish().unwrap();
+        }
+
+        let entries = extract_migration_entries_from_zip_bytes(&buffer.into_inner()).unwrap();
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].origin_label, "notes/alpha.md");
+        assert_eq!(entries[1].origin_label, "notes/raw.txt");
+    }
+
+    #[test]
+    fn generates_unique_migration_target_paths_on_collision() {
+        let repo_root = temp_path("migration-repo");
+        fs::create_dir_all(repo_root.join("notes")).unwrap();
+        fs::write(repo_root.join("notes/idea.md"), "existing").unwrap();
+
+        let unique = unique_migration_target_path(&repo_root, "note", "idea");
+
+        assert_eq!(unique, PathBuf::from("notes/idea-2.md"));
+
+        let _ = fs::remove_dir_all(repo_root);
+    }
+
+    #[test]
+    fn parses_ollama_json_into_migration_drafts() {
+        let payload = serde_json::json!({
+            "drafts": [
+                {
+                    "title": "Imported Note",
+                    "type": "note",
+                    "summary": "Short summary",
+                    "body": "## Summary\n\nBody",
+                    "theme": ["knowledge"],
+                    "tags": ["migration"],
+                    "source": ["archive.zip"],
+                    "status": "inbox"
+                }
+            ],
+            "warnings": ["skipped binary"]
+        });
+
+        let parsed = parse_migration_model_response(&payload.to_string(), "archive.zip").unwrap();
+
+        assert_eq!(parsed.drafts.len(), 1);
+        assert_eq!(parsed.drafts[0].path, "notes/imported-note.md");
+        assert_eq!(parsed.warnings, vec!["skipped binary"]);
     }
 }

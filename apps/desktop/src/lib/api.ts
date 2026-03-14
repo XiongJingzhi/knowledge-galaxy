@@ -5,6 +5,9 @@ import type {
   DocumentFilters,
   DocumentListItem,
   ExportSnapshot,
+  KnowledgeMigrationDraft,
+  KnowledgeMigrationImportResult,
+  KnowledgeMigrationPreview,
   NavSection,
 } from "./types";
 
@@ -51,6 +54,17 @@ type ImportAssetPayload = {
   project?: string;
 };
 
+type AnalyzeKnowledgeMigrationPayload = {
+  filePath: string;
+  model: string;
+};
+
+type ImportKnowledgeMigrationPayload = {
+  filePath: string;
+  model: string;
+  drafts: KnowledgeMigrationDraft[];
+};
+
 const isTauriRuntime = () =>
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -85,6 +99,24 @@ export async function chooseAssetFile(): Promise<string | null> {
   const selected = await open({
     directory: false,
     multiple: false,
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+export async function chooseKnowledgeSourceFile(): Promise<string | null> {
+  if (!isTauriRuntime()) {
+    throw new Error("文件选择只在 Tauri 运行时可用");
+  }
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const selected = await open({
+    directory: false,
+    multiple: false,
+    filters: [
+      {
+        name: "Knowledge Sources",
+        extensions: ["md", "markdown", "txt", "zip"],
+      },
+    ],
   });
   return typeof selected === "string" ? selected : null;
 }
@@ -132,6 +164,18 @@ export async function listAssets(): Promise<AssetRecord[]> {
 
 export async function importAsset(payload: ImportAssetPayload): Promise<AssetRecord> {
   return call("import_asset", { payload });
+}
+
+export async function analyzeKnowledgeMigration(
+  payload: AnalyzeKnowledgeMigrationPayload,
+): Promise<KnowledgeMigrationPreview> {
+  return call("analyze_knowledge_migration", { payload });
+}
+
+export async function importKnowledgeMigration(
+  payload: ImportKnowledgeMigrationPayload,
+): Promise<KnowledgeMigrationImportResult> {
+  return call("import_knowledge_migration", { payload });
 }
 
 export async function getStats(): Promise<StatsSnapshot> {

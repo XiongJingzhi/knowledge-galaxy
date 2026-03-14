@@ -15,7 +15,7 @@
 - 首页：一屏承载全局搜索、概览卡和最近动态
 - 文档页：表格化索引、搜索，以及通过筛选弹层按 `type/status/project/date/theme/tag/source` 过滤
 - 文档工作区：创建或编辑文档时进入独立页面，左侧 Markdown 编辑，右侧实时预览，`createdAt/updatedAt/date` 自动生成并作为只读信息展示
-- 资源页：查看 `asset-list`，按仓库级 / 项目级切换浏览，使用系统文件选择器导入资源，并查看当前选中资源的路径、作用域、项目、大小和 `sha256`
+- 资源页：查看 `asset-list`，按仓库级 / 项目级切换浏览，使用系统文件选择器导入资源，并支持把本地 `md/zip` 通过 `Ollama` 迁入知识星系，同时查看当前选中资源的路径、作用域、项目、大小和 `sha256`
 - 校验与导出页：`validate`、`document-list`、`manifest`、`change-list`、`asset-list`
 - 项目页：`add-remote`、`fetch`、`push`、`sync`
 
@@ -32,6 +32,7 @@
 - Node.js / npm
 - Rust / Cargo
 - Python 3
+- 本地 `Ollama` 服务与可用模型，例如 `llama3.2`
 
 桌面端当前假定你是在本仓库内开发和运行，因此 Python CLI 模块路径依赖当前仓库源码。
 
@@ -64,6 +65,13 @@ npm run build
 ```
 
 这里的正式产物来自 `tauri build`，输出位于 `src-tauri/target/release/bundle/`。`vite build` 只是构建过程中的前端编译步骤，不是桌面端交付物。
+
+知识迁移工作流位于 `资源` 页：
+
+- 选择本地 `md`、`markdown`、`txt` 或 `zip`
+- 输入本地 `Ollama` 模型名
+- 先生成迁移预览，再确认导入
+- 导入结果会写入 `notes/`、`decisions/`、`reviews/`、`references/`
 
 ## 设计约束
 

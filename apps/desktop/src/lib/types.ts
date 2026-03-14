@@ -44,6 +44,31 @@ export type AssetRecord = {
   sha256: string;
 };
 
+export type KnowledgeMigrationDraft = {
+  title: string;
+  type: "note" | "decision" | "review" | "reference";
+  summary: string;
+  body: string;
+  theme: string[];
+  tags: string[];
+  source: string[];
+  status: string;
+  path: string;
+  originLabel: string;
+};
+
+export type KnowledgeMigrationPreview = {
+  sourceLabel: string;
+  drafts: KnowledgeMigrationDraft[];
+  warnings: string[];
+};
+
+export type KnowledgeMigrationImportResult = {
+  imported: number;
+  createdPaths: string[];
+  warnings: string[];
+};
+
 export type ExportSnapshot = {
   kind: string;
   content: string;
