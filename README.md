@@ -144,7 +144,7 @@ GitHub Actions 当前拆成三个工作流：
 - `integration.yml`：在推送到 `main` 或手动触发时构建桌面端 Tauri bundle，以及 Go / Rust 的跨平台构建产物并上传 artifact
 - `release.yml`：在推送到 `main` 或手动触发时重新构建 nightly 所需产物，并更新固定的 `Nightly` 预发布版本
 
-Nightly 预发布当前会包含 Go、Rust 以及桌面端 Tauri bundle，命名保持语言或目标平台前缀，避免重名覆盖。
+Nightly 预发布当前会包含 Go、Rust 以及桌面端安装包级产物；桌面端只发布 `.dmg`、`.deb`、`.rpm`、`.AppImage`、`.msi`、`.exe` 这类最终交付文件，不再直接暴露 bundle 内部动态库。
 
 ## 直接入口
 

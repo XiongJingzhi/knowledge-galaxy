@@ -90,7 +90,7 @@ npm run build
 
 - `ci.yml` 会执行桌面端组件测试、Tauri Rust 后端 `cargo check` 和桌面 bundle 构建
 - `integration.yml` 会构建桌面端 Tauri bundle 并上传 artifact
-- `release.yml` 会把桌面端 Tauri bundle 一并纳入 nightly 发布物
+- `release.yml` 只会把桌面端安装包级产物纳入 nightly 发布物，不会直接发布 bundle 内部动态库或解包目录文件
 
 ## 后续方向
 

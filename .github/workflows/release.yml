@@ -44,11 +44,19 @@ jobs:
       - name: Build desktop Tauri bundle
         run: make build-desktop
 
+      - name: Collect desktop installer artifacts
+        run: |
+          mkdir -p apps/desktop/src-tauri/target/release/installer-artifacts
+          find apps/desktop/src-tauri/target/release/bundle -type f \
+            \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.msi" -o -name "*.exe" -o -name "*.dmg" \) \
+            -exec cp {} apps/desktop/src-tauri/target/release/installer-artifacts/ \;
+          ls -la apps/desktop/src-tauri/target/release/installer-artifacts
+
       - name: Upload desktop bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: kg-desktop-bundle-linux
-          path: apps/desktop/src-tauri/target/release/bundle
+          path: apps/desktop/src-tauri/target/release/installer-artifacts
 
   build-go:
     name: Build Go (${{ matrix.goos }}-${{ matrix.goarch }})
@@ -181,7 +189,7 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p release-bundle
-          find release-artifacts -type f -exec cp {} release-bundle/ \;
+          find release-artifacts -mindepth 2 -maxdepth 2 -type f -exec cp {} release-bundle/ \;
           ls -la release-bundle
 
       - name: Publish nightly prerelease
