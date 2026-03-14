@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-desktop:
-    name: Build Desktop Frontend
+    name: Build Desktop Bundle
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,14 +41,14 @@ jobs:
       - name: Install desktop npm dependencies
         run: cd apps/desktop && npm ci
 
-      - name: Build desktop frontend
+      - name: Build desktop Tauri bundle
         run: make build-desktop
 
-      - name: Upload desktop frontend artifact
+      - name: Upload desktop bundle artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kg-desktop-frontend
-          path: apps/desktop/dist
+          name: kg-desktop-bundle-linux
+          path: apps/desktop/src-tauri/target/release/bundle
 
   build-go:
     name: Build Go (${{ matrix.goos }}-${{ matrix.goarch }})

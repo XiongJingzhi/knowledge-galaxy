@@ -1,65 +1,69 @@
-import type { DocumentDetail, DocumentFilters, DocumentListItem } from "../lib/types";
+import type { DocumentFilters, DocumentListItem } from "../lib/types";
 import type { DocumentSignal } from "../lib/desktop-ui";
-import { DocumentEditor } from "../components/DocumentEditor";
 import { DocumentFilters as FiltersPanel } from "../components/DocumentFilters";
 
 export function DocumentsPage({
   documents,
-  detail,
   filters,
   query,
-  selectedPath,
   viewLabel,
   documentSignals,
   onQueryChange,
   onFiltersChange,
-  onSelectDocument,
   onApplySignal,
-  onSave,
+  onOpenCreate,
+  onOpenDocument,
+  onResetView,
 }: {
   documents: DocumentListItem[];
-  detail: DocumentDetail | null;
   filters: DocumentFilters;
   query: string;
-  selectedPath: string | null;
   viewLabel: string;
   documentSignals: DocumentSignal[];
   onQueryChange: (value: string) => void;
   onFiltersChange: (value: DocumentFilters) => void;
-  onSelectDocument: (path: string) => void;
   onApplySignal: (filterKey: keyof DocumentFilters, value: string) => void;
-  onSave: (value: DocumentDetail) => Promise<void>;
+  onOpenCreate: () => void;
+  onOpenDocument: (path: string) => void;
+  onResetView: () => void;
 }) {
   return (
     <div className="content-grid document-shell">
-      <section className="panel document-command">
+      <section className="panel document-index">
         <div className="panel__header document-command__header">
           <div>
-            <span className="eyebrow">DOCUMENT DESK</span>
-            <h3>文档指挥台</h3>
+            <span className="eyebrow">DOCUMENT INDEX</span>
+            <h3>文档索引</h3>
           </div>
           <span>{documents.length} 条</span>
         </div>
-        <div className="view-context view-context--compact">
+        <div className="view-context view-context--compact document-index__toolbar">
           <strong>{viewLabel}</strong>
-          <span>在当前仓库里收敛焦点文档，再进入右侧编辑区继续修改内容和元数据。</span>
+          <div className="document-index__actions">
+            <button className="ghost-button" type="button" onClick={onResetView}>
+              重置筛选
+            </button>
+            <button className="primary-button" type="button" onClick={onOpenCreate}>
+              新建文档
+            </button>
+          </div>
         </div>
-        <label className="field field--wide">
+        <label className="field field--wide document-index__search">
           <span>搜索</span>
           <input value={query} onChange={(event) => onQueryChange(event.currentTarget.value)} />
         </label>
-        <section className="document-filters-panel" aria-label="焦点筛选">
+        <section className="document-filters-panel" aria-label="逻辑分类">
           <div className="panel__header signal-rail__header">
-            <h3>焦点筛选</h3>
-            <span>按类型、状态和标签快速收拢文档列表</span>
+            <h3>逻辑分类</h3>
+            <span>按类型、状态、项目和主题收敛检索结果</span>
           </div>
           <FiltersPanel filters={filters} onChange={onFiltersChange} />
         </section>
         {documentSignals.length ? (
           <section className="signal-rail" aria-label="文档信号条">
             <div className="panel__header signal-rail__header">
-              <h3>文档信号条</h3>
-              <span>从统计摘要一键进入焦点视图</span>
+              <h3>逻辑分类</h3>
+              <span>从统计摘要一键聚焦常用分类</span>
             </div>
             <div className="signal-rail__grid">
               {documentSignals.map((signal) => (
@@ -79,38 +83,59 @@ export function DocumentsPage({
             </div>
           </section>
         ) : null}
+        <section className="panel document-browser">
+          <div className="panel__header">
+            <h3>文档列表</h3>
+            <span>{documents.length ? `${documents.length} 篇` : "等待结果"}</span>
+          </div>
+          <div className="document-table-wrap">
+            <table className="document-table">
+              <thead>
+                <tr>
+                  <th scope="col">标题</th>
+                  <th scope="col">类型</th>
+                  <th scope="col">状态</th>
+                  <th scope="col">更新时间</th>
+                  <th scope="col">路径</th>
+                </tr>
+              </thead>
+              <tbody>
+                {documents.length ? (
+                  documents.map((document) => (
+                    <tr key={document.path}>
+                      <td>
+                        <button
+                          className="document-table__link"
+                          onClick={() => onOpenDocument(document.path)}
+                          type="button"
+                        >
+                          {document.title}
+                        </button>
+                      </td>
+                      <td>{document.type}</td>
+                      <td>{document.status}</td>
+                      <td>最近更新</td>
+                      <td>
+                        <code>{document.path}</code>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5}>
+                      <article className="empty-state">
+                        <span className="eyebrow">EMPTY VIEW</span>
+                        <h4>当前视图没有文档结果</h4>
+                        <p>试试清空筛选条件，或者从上方新建一篇文档。</p>
+                      </article>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </section>
-      <section className="panel document-browser">
-        <div className="panel__header">
-          <h3>文档浏览</h3>
-          <span>{selectedPath ? "已选中 1 篇" : "等待选择"}</span>
-        </div>
-        <div className="list-panel">
-          {documents.length ? (
-            documents.map((document) => (
-              <button
-                key={document.path}
-                className={document.path === selectedPath ? "list-row is-active" : "list-row"}
-                onClick={() => onSelectDocument(document.path)}
-                type="button"
-              >
-                <strong>{document.title}</strong>
-                <span>
-                  {document.type} · {document.status}
-                </span>
-                <code>{document.path}</code>
-              </button>
-            ))
-          ) : (
-            <article className="empty-state">
-              <span className="eyebrow">EMPTY VIEW</span>
-              <h4>当前视图没有文档结果</h4>
-              <p>试试清空筛选条件，或者直接去创建一篇新文档。</p>
-            </article>
-          )}
-        </div>
-      </section>
-      <DocumentEditor document={detail} onSave={onSave} />
     </div>
   );
 }

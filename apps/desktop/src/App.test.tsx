@@ -70,14 +70,14 @@ function arrangeApi() {
   });
   mockedApi.runValidate.mockResolvedValue({ ok: true, errors: [], raw: "OK" });
   mockedApi.runExport.mockResolvedValue({ kind: "manifest", content: "{}" });
-  mockedApi.getDocument.mockResolvedValue({
-    path: "notes/idea.md",
-    id: "note-1",
+  mockedApi.getDocument.mockImplementation(async (path) => ({
+    path,
+    id: path.includes("ship-note") ? "note-ship" : "note-1",
     type: "note",
-    slug: "idea",
+    slug: path.split("/").pop()?.replace(/\.md$/, "") ?? "idea",
     createdAt: "2026-03-13T00:00:00Z",
     updatedAt: "2026-03-13T00:00:00Z",
-    title: "Idea",
+    title: path.includes("ship-note") ? "Ship Note" : "Idea",
     status: "active",
     date: "",
     theme: [],
@@ -85,15 +85,16 @@ function arrangeApi() {
     tags: [],
     source: [],
     summary: "",
-    body: "body",
+    body: path.includes("ship-note") ? "Captured from desktop." : "body",
     gitWorktree: "",
-  });
+  }));
 }
 
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     arrangeApi();
+    window.history.pushState({}, "", "/");
     Object.defineProperty(globalThis.navigator, "clipboard", {
       configurable: true,
       value: {
@@ -166,6 +167,7 @@ describe("App", () => {
     expect(screen.getByText("/tmp/default-repo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "切换仓库目录" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "打开目录" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "创建" })).not.toBeInTheDocument();
   });
 
   it("navigates from home search to documents with the query applied", async () => {
@@ -183,7 +185,7 @@ describe("App", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("文档浏览")).toBeInTheDocument();
+      expect(screen.getByText("文档索引")).toBeInTheDocument();
       expect(screen.getByLabelText("搜索")).toHaveValue("galaxy query");
     });
   });
@@ -238,25 +240,27 @@ describe("App", () => {
     await screen.findByText("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
-    expect(await screen.findByText("文档指挥台")).toBeInTheDocument();
-    expect(screen.getByText("焦点筛选")).toBeInTheDocument();
+    expect(await screen.findByText("文档索引")).toBeInTheDocument();
+    expect(screen.getAllByText("逻辑分类").length).toBeGreaterThan(0);
+    expect(screen.getByRole("columnheader", { name: "标题" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "新建文档" })).toBeInTheDocument();
     expect(
       await screen.findByText("当前视图没有文档结果"),
     ).toBeInTheDocument();
-    expect(screen.getByText("试试清空筛选条件，或者直接去创建一篇新文档。")).toBeInTheDocument();
+    expect(screen.getByText("试试清空筛选条件，或者从上方新建一篇文档。")).toBeInTheDocument();
   });
 
-  it("switches to the create workbench with note preset from the documents hero", async () => {
+  it("navigates from documents to the routed document creation page", async () => {
     render(<App />);
 
     await screen.findByText("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "新建 Note" }));
+    fireEvent.click(screen.getByRole("button", { name: "新建文档" }));
 
-    expect(await screen.findByText("创建中心")).toBeInTheDocument();
-    expect(screen.getByText("配方台")).toBeInTheDocument();
-    expect(screen.getByText("正文起草")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "新建文档" })).toBeInTheDocument();
+    expect(screen.getAllByText("Markdown 编辑").length).toBeGreaterThan(0);
+    expect(screen.getByText("实时预览")).toBeInTheDocument();
     expect(screen.getByDisplayValue("note")).toBeInTheDocument();
   });
 
@@ -270,7 +274,7 @@ describe("App", () => {
     expect(screen.getByText("导入面板")).toBeInTheDocument();
   });
 
-  it("clears the current search and filters from the documents hero", async () => {
+  it("clears the current search and filters from the documents index toolbar", async () => {
     render(<App />);
 
     await screen.findByText("/tmp/default-repo");
@@ -285,7 +289,7 @@ describe("App", () => {
 
     await screen.findByText("当前视图 · 搜索 “search phrase”");
 
-    fireEvent.click(screen.getByRole("button", { name: "重置视图" }));
+    fireEvent.click(screen.getByRole("button", { name: "重置筛选" }));
 
     await waitFor(() => {
       expect(screen.getByLabelText("搜索")).toHaveValue("");
@@ -300,7 +304,7 @@ describe("App", () => {
     await screen.findByText("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
-    expect(screen.getByText("文档信号条")).toBeInTheDocument();
+    expect(screen.getAllByText("逻辑分类").length).toBeGreaterThan(0);
     expect(screen.getByText("active")).toBeInTheDocument();
     expect(screen.getByText("8 篇")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "聚焦状态 active" })).toBeInTheDocument();
@@ -359,22 +363,22 @@ describe("App", () => {
       });
     });
 
-    expect(await screen.findByText("已执行项目命令")).toBeInTheDocument();
-    expect(screen.getByText("orion · add-remote")).toBeInTheDocument();
+    expect(await screen.findByText("ok")).toBeInTheDocument();
   });
 
-  it("creates a note with inline body from the create workbench", async () => {
+  it("creates a note from the routed document creation page", async () => {
     mockedApi.createDocument.mockResolvedValue({ path: "notes/ship-note.md" });
 
     render(<App />);
 
     await screen.findByText("/tmp/default-repo");
 
-    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
+    fireEvent.click(screen.getByRole("button", { name: "新建文档" }));
     fireEvent.change(screen.getByLabelText("标题"), {
       target: { value: "Ship Note" },
     });
-    fireEvent.change(screen.getByLabelText("正文"), {
+    fireEvent.change(screen.getByLabelText("Markdown 正文"), {
       target: { value: "Captured from desktop." },
     });
 
@@ -382,7 +386,6 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(mockedApi.createDocument).toHaveBeenCalledWith("note", {
-        type: "note",
         title: "Ship Note",
         date: "",
         gitWorktree: "",
@@ -390,33 +393,22 @@ describe("App", () => {
       });
     });
 
-    expect(await screen.findByText("已创建文档")).toBeInTheDocument();
-    expect(screen.getByText("notes/ship-note.md")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "编辑文档" })).toBeInTheDocument();
+    expect(await screen.findByText("notes/ship-note.md")).toBeInTheDocument();
   });
 
-  it("renders recipe cards in the create center", async () => {
+  it("renders a two-column editor and preview layout on the routed creation page", async () => {
     render(<App />);
 
     await screen.findByText("/tmp/default-repo");
 
-    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
+    fireEvent.click(screen.getByRole("button", { name: "新建文档" }));
 
-    expect(screen.getByText("配方台")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "切换到 note 配方" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "切换到 project 配方" })).toBeInTheDocument();
-  });
-
-  it("switches create context when choosing the project recipe", async () => {
-    render(<App />);
-
-    await screen.findByText("/tmp/default-repo");
-
-    fireEvent.click(screen.getByRole("button", { name: "创建" }));
-    fireEvent.click(screen.getByRole("button", { name: "切换到 project 配方" }));
-
-    expect(screen.getByDisplayValue("project")).toBeInTheDocument();
-    expect(screen.getByText("当前配方需要标题与 Git Worktree，用于把知识库项目条目接到真实代码目录。")).toBeInTheDocument();
-    expect(screen.getByLabelText("Git Worktree")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "新建文档" })).toBeInTheDocument();
+    expect(screen.getAllByText("Markdown 编辑").length).toBeGreaterThan(0);
+    expect(screen.getByText("实时预览")).toBeInTheDocument();
+    expect(screen.getByLabelText("Markdown 正文")).toBeInTheDocument();
   });
 
   it("renders export content after running an export action", async () => {
@@ -500,7 +492,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
     await screen.findByText("Idea");
 
-    fireEvent.click(screen.getByRole("button", { name: "Idea note · active notes/idea.md" }));
+    fireEvent.click(screen.getByRole("button", { name: "Idea" }));
+    await screen.findByRole("heading", { name: "编辑文档" });
     await screen.findByDisplayValue("Idea");
 
     fireEvent.change(screen.getByLabelText("标题"), {
@@ -597,8 +590,7 @@ describe("App", () => {
       });
     });
 
-    expect(await screen.findByText("已导入资源")).toBeInTheDocument();
-    expect(screen.getByText("projects/atlas/assets/hero.png")).toBeInTheDocument();
+    expect(mockedApi.importAsset).toHaveBeenCalledTimes(1);
   });
 
   it("renders validation errors after running validate", async () => {

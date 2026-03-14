@@ -4,7 +4,6 @@ import { GalaxyLogo } from "./GalaxyLogo";
 const labels: Record<NavSection, string> = {
   home: "首页",
   documents: "文档",
-  create: "创建",
   assets: "资源",
   ops: "校验与导出",
   projects: "项目",
@@ -30,7 +29,7 @@ export function Sidebar({
           <GalaxyLogo />
         </div>
         <h1>知识星系</h1>
-        <p>浏览文档、创建条目、整理资源，并把知识库和项目仓库保持同步。</p>
+        <p>搜索文档、整理资源，并把知识库和项目仓库保持同步。</p>
       </div>
       <section className="sidebar__repo-card" aria-label="仓库目录">
         <div className="sidebar__repo-header">

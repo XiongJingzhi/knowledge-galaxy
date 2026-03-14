@@ -12,14 +12,6 @@ export type OverviewCard = {
   accent: "signal" | "ink" | "muted" | "soft";
 };
 
-export type HomeEntryCard = {
-  section: Exclude<NavSection, "home">;
-  eyebrow: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-};
-
 export type SectionHeroAction = {
   label: string;
   kind: "primary" | "ghost";
@@ -42,13 +34,6 @@ export type DocumentSignal = {
   filterKey: keyof DocumentFilters;
 };
 
-export type CreateRecipe = {
-  type: string;
-  title: string;
-  description: string;
-  hint: string;
-};
-
 export const sectionDeskCopy: Record<NavSection, { title: string; description: string }> = {
   home: {
     title: "首页",
@@ -57,10 +42,6 @@ export const sectionDeskCopy: Record<NavSection, { title: string; description: s
   documents: {
     title: "文档",
     description: "查看、筛选并编辑当前知识库中的文档。",
-  },
-  create: {
-    title: "创建",
-    description: "根据模板快速创建新的知识条目。",
   },
   assets: {
     title: "资源",

@@ -1,4 +1,4 @@
-export type NavSection = "home" | "documents" | "create" | "assets" | "ops" | "projects";
+export type NavSection = "home" | "documents" | "assets" | "ops" | "projects";
 
 export type DocumentFilters = {
   type?: string;

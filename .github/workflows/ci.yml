@@ -55,7 +55,7 @@ jobs:
         run: make test
 
   desktop-check:
-    name: Desktop Check
+    name: Desktop Tauri Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -88,8 +88,8 @@ jobs:
       - name: Run desktop component tests
         run: cd apps/desktop && npm test
 
-      - name: Build desktop frontend
-        run: cd apps/desktop && npm run build
-
       - name: Check desktop Tauri backend
         run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+      - name: Build desktop Tauri bundle
+        run: cd apps/desktop && npm run build

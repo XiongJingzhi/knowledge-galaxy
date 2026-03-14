@@ -69,18 +69,18 @@ README.md
 - `project push`
 - `project sync`
 
-桌面端当前已经切到“首页总览 + 二级工作页”的结构：
+桌面端当前已经切到“首页总览 + 文档中心 + 二级工作区”的结构：
 
-- 首页控制在一屏内，集中承载仓库切换、全局搜索、结构总览、最近操作和功能入口
-- 文档、创建、资源、校验导出、项目都作为二级页承载完整功能
+- 首页控制在一屏内，集中承载全局搜索、知识概览和最近动态
+- 文档页收敛为索引台，负责搜索、逻辑分类和表格列表
+- 文档创建与编辑进入独立二级工作区，采用左侧 Markdown 编辑、右侧预览
 - 侧栏加入桌面端专用的星系 logo，延续深色结构网格与轨道视觉语言
-- 文档页支持浏览、过滤、搜索、信号条聚焦、详情编辑与保存
-- 创建页提供 `daily / note / decision / review / project` 配方台
+- 文档页支持浏览、过滤、搜索、信号条聚焦，以及进入二级编辑工作区
 - 资源页支持 `asset-list` 浏览、按仓库级 / 项目级切换以及资源导入
 - 校验导出页支持 `validate`、`document-list`、`manifest`、`change-list`、`asset-list`
 - 项目页支持 `add-remote`、`fetch`、`push`、`sync`
 
-桌面端当前的界面方向已经收敛到“星系控制台 / 结构工作台”，首页负责总览与分发，二级页负责高密度操作，不再默认把所有工作台直接摊在首屏。
+桌面端当前的界面方向已经收敛到“星系控制台 / 结构工作台”，首页负责总览与检索，文档创建和编辑都下沉到二级工作区。
 
 ## 默认知识仓库
 
@@ -133,17 +133,17 @@ make build-desktop
 跨平台构建产物会输出到 `dist/` 目录。
 本地临时构建产物会输出到 `bin/` 目录。
 
-桌面端前端构建产物会输出到 `apps/desktop/dist/`，Tauri Rust 构建产物位于 `apps/desktop/src-tauri/target/`。
+桌面端开发期前端编译产物会输出到 `apps/desktop/dist/`，正式桌面构建产物位于 `apps/desktop/src-tauri/target/release/bundle/`。
 
 ## CI 与发布
 
 GitHub Actions 当前拆成三个工作流：
 
-- `ci.yml`：在 `pull_request` 和推送到 `main` 时运行仓库测试，并单独校验桌面端组件测试、前端构建和 Tauri Rust 后端 `cargo check`
-- `integration.yml`：在推送到 `main` 或手动触发时构建桌面端前端产物，以及 Go / Rust 的跨平台构建产物并上传 artifact
+- `ci.yml`：在 `pull_request` 和推送到 `main` 时运行仓库测试，并单独校验桌面端组件测试、Tauri Rust 后端 `cargo check` 与桌面 bundle 构建
+- `integration.yml`：在推送到 `main` 或手动触发时构建桌面端 Tauri bundle，以及 Go / Rust 的跨平台构建产物并上传 artifact
 - `release.yml`：在推送到 `main` 或手动触发时重新构建 nightly 所需产物，并更新固定的 `Nightly` 预发布版本
 
-Nightly 预发布当前会包含 Go、Rust 以及桌面端前端产物，命名保持语言或目标平台前缀，避免重名覆盖。
+Nightly 预发布当前会包含 Go、Rust 以及桌面端 Tauri bundle，命名保持语言或目标平台前缀，避免重名覆盖。
 
 ## 直接入口
 

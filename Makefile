@@ -23,8 +23,7 @@ build-rust:
 
 build-desktop:
 	cd apps/desktop && npm run build
-	cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml
-	@echo Built desktop frontend and Tauri backend
+	@echo Built desktop Tauri bundle
 
 build-go-cross:
 	@mkdir -p $(DIST_DIR)

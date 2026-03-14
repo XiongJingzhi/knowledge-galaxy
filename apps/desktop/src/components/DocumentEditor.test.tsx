@@ -34,8 +34,8 @@ describe("DocumentEditor", () => {
   it("renders a guided empty state when no document is selected", () => {
     render(<DocumentEditor document={null} onSave={() => undefined} />);
 
-    expect(screen.getByText("还没有选中文档")).toBeInTheDocument();
-    expect(screen.getByText("从左侧列表选择一篇文档，右侧就会切换到可编辑的档案视图。")).toBeInTheDocument();
+    expect(screen.getByText("还没有可编辑的文档")).toBeInTheDocument();
+    expect(screen.getByText("请先从文档列表进入创建或编辑工作区。")).toBeInTheDocument();
   });
 
   it("marks editor dirty after changes and emits save payload", () => {
@@ -53,13 +53,13 @@ describe("DocumentEditor", () => {
     expect(saves[0].title).toBe("Idea Updated");
   });
 
-  it("renders a dossier strip with core document metadata", () => {
+  it("renders editing fields and preview metadata", () => {
     render(<DocumentEditor document={detail} onSave={() => undefined} />);
 
-    expect(screen.getByText("文档档案")).toBeInTheDocument();
+    expect(screen.getByText("Markdown 编辑")).toBeInTheDocument();
+    expect(screen.getByText("实时预览")).toBeInTheDocument();
     expect(screen.getByText("note")).toBeInTheDocument();
-    expect(screen.getAllByText("idea")).toHaveLength(2);
-    expect(screen.getAllByText("2026-03-13T00:00:00Z")).toHaveLength(2);
+    expect(screen.getByDisplayValue("Idea")).toBeInTheDocument();
     expect(screen.getByText("knowledge")).toBeInTheDocument();
     expect(screen.getByText("atlas")).toBeInTheDocument();
   });

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   chooseRepoDirectory,
   createDocument,
@@ -6,10 +7,10 @@ import {
   getRecentRepos,
   getStats,
   importAsset,
-  openRepoDirectory,
   listAssets,
   listDocuments,
   listProjects,
+  openRepoDirectory,
   runExport,
   runProjectCommand,
   runValidate,
@@ -24,18 +25,15 @@ import {
   type StatsSnapshot,
   type ValidationResult,
 } from "./lib/api";
-import type { AssetRecord, DocumentDetail, DocumentFilters, DocumentListItem, NavSection } from "./lib/types";
 import { Sidebar } from "./components/Sidebar";
-import { ActivityFeed } from "./components/ActivityFeed";
-import { OverviewStrip } from "./components/DesktopMasthead";
-import { SectionHero } from "./components/SectionHero";
 import { AssetsPage } from "./pages/AssetsPage";
-import { CreatePage } from "./pages/CreatePage";
+import { DocumentCreatePage } from "./pages/DocumentCreatePage";
 import { DocumentsPage } from "./pages/DocumentsPage";
 import { HomePage } from "./pages/HomePage";
 import { OpsPage } from "./pages/OpsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
-import type { ActivityItem, CreateRecipe, OverviewCard } from "./lib/desktop-ui";
+import type { ActivityItem, OverviewCard } from "./lib/desktop-ui";
+import type { AssetRecord, DocumentDetail, DocumentFilters, DocumentListItem, NavSection } from "./lib/types";
 
 const defaultDetail: DocumentDetail = {
   path: "",
@@ -56,41 +54,31 @@ const defaultDetail: DocumentDetail = {
   gitWorktree: "",
 };
 
-const createRecipes = [
-  {
-    type: "note",
-    title: "note",
-    description: "快速记录想法、摘录和临时知识片段。",
-    hint: "当前配方强调标题与正文，适合把即时内容直接写进知识库。",
-  },
-  {
-    type: "daily",
-    title: "daily",
-    description: "围绕某一天收集节奏、进展和捕获记录。",
-    hint: "当前配方强调日期，用于把一天的工作线索落到 daily 文档里。",
-  },
-  {
-    type: "decision",
-    title: "decision",
-    description: "记录一个明确的判断、选型或取舍。",
-    hint: "当前配方强调标题与摘要，适合保留可复盘的决策上下文。",
-  },
-  {
-    type: "review",
-    title: "review",
-    description: "沉淀阶段性复盘、周报或迭代总结。",
-    hint: "当前配方需要标题与日期，适合形成时间明确的复盘条目。",
-  },
-  {
-    type: "project",
-    title: "project",
-    description: "把知识库项目条目联接到实际代码或工作目录。",
-    hint: "当前配方需要标题与 Git Worktree，用于把知识库项目条目接到真实代码目录。",
-  },
-] as const satisfies readonly CreateRecipe[];
+function createDocumentDraft(seed: Partial<DocumentDetail> = {}): DocumentDetail {
+  return { ...defaultDetail, ...seed };
+}
 
-export function App() {
-  const [section, setSection] = useState<NavSection>("home");
+function desktopSectionFromPath(pathname: string): NavSection {
+  if (pathname.startsWith("/documents")) {
+    return "documents";
+  }
+  if (pathname.startsWith("/assets")) {
+    return "assets";
+  }
+  if (pathname.startsWith("/ops")) {
+    return "ops";
+  }
+  if (pathname.startsWith("/projects")) {
+    return "projects";
+  }
+  return "home";
+}
+
+function DesktopAppShell() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const section = desktopSectionFromPath(location.pathname);
+
   const [globalSearch, setGlobalSearch] = useState("");
   const [repoPathInput, setRepoPathInput] = useState("");
   const [repo, setRepo] = useState<RepoSummary | null>(null);
@@ -100,6 +88,7 @@ export function App() {
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
+  const [createDraft] = useState<DocumentDetail>(createDocumentDraft());
   const [assets, setAssets] = useState<AssetRecord[]>([]);
   const [stats, setStats] = useState<StatsSnapshot | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
@@ -109,13 +98,6 @@ export function App() {
   const [projectResult, setProjectResult] = useState<CommandResult | null>(null);
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [createForm, setCreateForm] = useState({
-    type: "note",
-    title: "",
-    date: "",
-    gitWorktree: "",
-    body: "",
-  });
   const [assetForm, setAssetForm] = useState({
     filePath: "",
     targetName: "",
@@ -130,8 +112,8 @@ export function App() {
     branch: "",
   });
 
-  const recordActivity = (title: string, detail: string, note?: string) => {
-    setActivityItems((current) => [{ title, detail, note }, ...current].slice(0, 5));
+  const recordActivity = (title: string, detailText: string, note?: string) => {
+    setActivityItems((current) => [{ title, detail: detailText, note }, ...current].slice(0, 5));
   };
 
   const activeFilterEntries = useMemo(
@@ -155,9 +137,9 @@ export function App() {
 
   const overviewCards = useMemo(() => {
     const cards: OverviewCard[] = [
-      { label: "总文档", value: String(stats?.total ?? 0), accent: "signal" as const },
-      { label: "资源数", value: String(assets.length), accent: "ink" as const },
-      { label: "仓库历史", value: String(recentRepos.length), accent: "muted" as const },
+      { label: "总文档", value: String(stats?.total ?? 0), accent: "signal" },
+      { label: "资源数", value: String(assets.length), accent: "ink" },
+      { label: "仓库历史", value: String(recentRepos.length), accent: "muted" },
     ];
     if (!stats) {
       return cards;
@@ -173,7 +155,7 @@ export function App() {
         cards.push({
           label: `${groupName} · ${group.key}`,
           value: String(group.count),
-          accent: "soft" as const,
+          accent: "soft",
         });
       }
     }
@@ -200,8 +182,6 @@ export function App() {
       .filter((value): value is NonNullable<typeof value> => value !== null);
   }, [stats]);
 
-  const activeCreateRecipe =
-    createRecipes.find((recipe) => recipe.type === createForm.type) ?? createRecipes[0];
   const refreshOverview = async (repoPath?: string) => {
     try {
       const summary = await selectRepo(repoPath);
@@ -231,6 +211,42 @@ export function App() {
     }
   };
 
+  useEffect(() => {
+    void refreshOverview();
+  }, []);
+
+  useEffect(() => {
+    const task = async () => {
+      try {
+        const next = query.trim() ? await searchDocuments(query.trim(), filters) : await listDocuments(filters);
+        setDocuments(next);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      }
+    };
+    void task();
+  }, [filters, query]);
+
+  useEffect(() => {
+    if (location.pathname !== "/documents/edit") {
+      return;
+    }
+    const documentPath = new URLSearchParams(location.search).get("path");
+    if (documentPath) {
+      setSelectedPath((current) => (current === documentPath ? current : documentPath));
+    }
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!selectedPath) {
+      setDetail(null);
+      return;
+    }
+    void getDocument(selectedPath)
+      .then(setDetail)
+      .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
+  }, [selectedPath]);
+
   const handleOpenRepoDirectory = async () => {
     try {
       const targetRepo = repoPathInput.trim() || repo?.path;
@@ -256,32 +272,6 @@ export function App() {
     }
   };
 
-  useEffect(() => {
-    void refreshOverview();
-  }, []);
-
-  useEffect(() => {
-    const task = async () => {
-      try {
-        const next = query.trim() ? await searchDocuments(query.trim(), filters) : await listDocuments(filters);
-        setDocuments(next);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
-      }
-    };
-    void task();
-  }, [filters, query]);
-
-  useEffect(() => {
-    if (!selectedPath) {
-      setDetail(null);
-      return;
-    }
-    void getDocument(selectedPath)
-      .then(setDetail)
-      .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
-  }, [selectedPath]);
-
   const handleSave = async (value: DocumentDetail) => {
     try {
       const result = await saveDocument(value.path, value);
@@ -294,13 +284,18 @@ export function App() {
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (value: DocumentDetail) => {
     try {
-      const created = await createDocument(createForm.type, createForm);
+      const created = await createDocument(value.type, {
+        title: value.title,
+        date: value.date,
+        gitWorktree: value.gitWorktree,
+        body: value.body,
+      });
       setSelectedPath(created.path);
       await refreshOverview(repo?.path);
-      setSection("documents");
-      recordActivity("已创建文档", created.path, createForm.type);
+      navigate(`/documents/edit?path=${encodeURIComponent(created.path)}`);
+      recordActivity("已创建文档", created.path, value.type);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -310,7 +305,7 @@ export function App() {
     try {
       const imported = await importAsset(assetForm);
       await refreshOverview(repo?.path);
-      setSection("assets");
+      navigate("/assets");
       recordActivity("已导入资源", imported.path, imported.scope === "project" ? imported.project : "repo");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -355,11 +350,6 @@ export function App() {
     }
   };
 
-  const resetDocumentView = () => {
-    setQuery("");
-    setFilters({});
-  };
-
   const applyDocumentSignal = (filterKey: keyof DocumentFilters, value: string) => {
     setQuery("");
     setFilters((current) => ({ ...current, [filterKey]: value }));
@@ -368,11 +358,7 @@ export function App() {
   const submitHomeSearch = () => {
     setFilters({});
     setQuery(globalSearch.trim());
-    setSection("documents");
-  };
-
-  const updateCreateForm = (field: "type" | "title" | "date" | "gitWorktree" | "body", value: string) => {
-    setCreateForm((current) => ({ ...current, [field]: value }));
+    navigate("/documents");
   };
 
   const updateAssetForm = (field: "filePath" | "targetName" | "project", value: string) => {
@@ -383,143 +369,16 @@ export function App() {
     setRemoteForm((current) => ({ ...current, [field]: value }));
   };
 
-  const sectionHero = (() => {
-    switch (section) {
-      case "documents":
-        return {
-          eyebrow: "DOCUMENTS",
-          title: "文档工作区",
-          description: "围绕当前仓库文档继续筛选、聚焦和编辑。",
-          actions: [
-            {
-              label: "新建 Note",
-              kind: "primary" as const,
-              onClick: () => {
-                setCreateForm((current) => ({ ...current, type: "note" }));
-                setSection("create");
-              },
-            },
-            {
-              label: "重置视图",
-              kind: "ghost" as const,
-              onClick: resetDocumentView,
-            },
-          ],
-        };
-      case "create":
-        return {
-          eyebrow: "CREATE",
-          title: "创建工作区",
-          description: "先选配方，再补关键字段和正文初稿。",
-          actions: [],
-        };
-      case "assets":
-        return {
-          eyebrow: "ASSETS",
-          title: "资源工作区",
-          description: "按作用域查看资源库存，并把新文件导入到仓库或项目中。",
-          actions: [],
-        };
-      case "ops":
-        return {
-          eyebrow: "OPS",
-          title: "校验与导出",
-          description: "运行校验并生成当前仓库的导出快照。",
-          actions: [],
-        };
-      case "projects":
-        return {
-          eyebrow: "PROJECTS",
-          title: "项目工作区",
-          description: "把知识项目和代码仓库命令重新接上。",
-          actions: [],
-        };
-      case "home":
-        return null;
-    }
-  })();
-
-  const pageContent = (() => {
-    switch (section) {
-      case "home":
-        return (
-          <HomePage
-            globalSearch={globalSearch}
-            overviewCards={overviewCards}
-            activityItems={activityItems}
-            onGlobalSearchChange={setGlobalSearch}
-            onGlobalSearchSubmit={submitHomeSearch}
-          />
-        );
-      case "documents":
-        return (
-          <DocumentsPage
-            documents={documents}
-            detail={detail}
-            filters={filters}
-            query={query}
-            selectedPath={selectedPath}
-            viewLabel={viewLabel}
-            documentSignals={documentSignals}
-            onQueryChange={setQuery}
-            onFiltersChange={setFilters}
-            onSelectDocument={setSelectedPath}
-            onApplySignal={applyDocumentSignal}
-            onSave={handleSave}
-          />
-        );
-      case "create":
-        return (
-          <CreatePage
-            createRecipes={createRecipes}
-            activeRecipe={activeCreateRecipe}
-            createForm={createForm}
-            onCreateFormChange={updateCreateForm}
-            onSelectRecipe={(type) => updateCreateForm("type", type)}
-            onCreate={() => void handleCreate()}
-          />
-        );
-      case "assets":
-        return (
-          <AssetsPage
-            assets={assets}
-            assetForm={assetForm}
-            assetProjectFilter={assetProjectFilter}
-            assetScope={assetScope}
-            onAssetFormChange={updateAssetForm}
-            onAssetProjectFilterChange={setAssetProjectFilter}
-            onAssetScopeChange={setAssetScope}
-            onImportAsset={() => void handleImportAsset()}
-          />
-        );
-      case "ops":
-        return (
-          <OpsPage
-            snapshot={snapshot}
-            validation={validation}
-            onExport={(kind) => void handleExport(kind)}
-            onSaveExportToFile={() => {
-              if (snapshot) {
-                void saveExportToFile(`${snapshot.kind}.json`, snapshot.content);
-              }
-            }}
-            onValidate={() => void handleValidate()}
-          />
-        );
-      case "projects":
-        return (
-          <ProjectsPage
-            activeProject={selectedProject}
-            projectResult={projectResult}
-            projects={projects}
-            remoteForm={remoteForm}
-            onProjectAction={(action) => void handleProjectAction(action)}
-            onRemoteFormChange={updateRemoteForm}
-            onSelectProject={setSelectedProject}
-          />
-        );
-    }
-  })();
+  const goToSection = (value: NavSection) => {
+    const pathMap: Record<NavSection, string> = {
+      home: "/",
+      documents: "/documents",
+      assets: "/assets",
+      ops: "/ops",
+      projects: "/projects",
+    };
+    navigate(pathMap[value]);
+  };
 
   return (
     <div className="app-shell">
@@ -528,21 +387,114 @@ export function App() {
         repoPath={repo?.path ?? repoPathInput}
         onChooseRepoDirectory={() => void handleChooseRepoDirectory()}
         onOpenRepoDirectory={() => void handleOpenRepoDirectory()}
-        onChange={setSection}
+        onChange={goToSection}
       />
       <main className="workspace">
         {error ? <div className="error-banner">{error}</div> : null}
         <div className={section === "home" ? "workspace__content workspace__content--home" : "workspace__content"}>
-          {section === "home" ? (
-            pageContent
-          ) : (
-            <>
-              {sectionHero ? <SectionHero hero={sectionHero} /> : null}
-              <OverviewStrip cards={overviewCards} />
-              <ActivityFeed items={activityItems} />
-              {pageContent}
-            </>
-          )}
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <HomePage
+                  globalSearch={globalSearch}
+                  overviewCards={overviewCards}
+                  activityItems={activityItems}
+                  onGlobalSearchChange={setGlobalSearch}
+                  onGlobalSearchSubmit={submitHomeSearch}
+                />
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <DocumentsPage
+                  documents={documents}
+                  filters={filters}
+                  query={query}
+                  viewLabel={viewLabel}
+                  documentSignals={documentSignals}
+                  onQueryChange={setQuery}
+                  onFiltersChange={setFilters}
+                  onApplySignal={applyDocumentSignal}
+                  onOpenCreate={() => navigate("/documents/new")}
+                  onOpenDocument={(path) => navigate(`/documents/edit?path=${encodeURIComponent(path)}`)}
+                  onResetView={() => {
+                    setQuery("");
+                    setFilters({});
+                  }}
+                />
+              }
+            />
+            <Route
+              path="/documents/new"
+              element={
+                <DocumentCreatePage
+                  mode="create"
+                  document={createDraft}
+                  onBack={() => navigate("/documents")}
+                  onSave={handleCreate}
+                />
+              }
+            />
+            <Route
+              path="/documents/edit"
+              element={
+                <DocumentCreatePage
+                  mode="edit"
+                  document={detail}
+                  onBack={() => navigate("/documents")}
+                  onSave={handleSave}
+                />
+              }
+            />
+            <Route
+              path="/assets"
+              element={
+                <AssetsPage
+                  assets={assets}
+                  assetForm={assetForm}
+                  assetProjectFilter={assetProjectFilter}
+                  assetScope={assetScope}
+                  onAssetFormChange={updateAssetForm}
+                  onAssetProjectFilterChange={setAssetProjectFilter}
+                  onAssetScopeChange={setAssetScope}
+                  onImportAsset={() => void handleImportAsset()}
+                />
+              }
+            />
+            <Route
+              path="/ops"
+              element={
+                <OpsPage
+                  snapshot={snapshot}
+                  validation={validation}
+                  onExport={(kind) => void handleExport(kind)}
+                  onSaveExportToFile={() => {
+                    if (snapshot) {
+                      void saveExportToFile(`${snapshot.kind}.json`, snapshot.content);
+                    }
+                  }}
+                  onValidate={() => void handleValidate()}
+                />
+              }
+            />
+            <Route
+              path="/projects"
+              element={
+                <ProjectsPage
+                  activeProject={selectedProject}
+                  projectResult={projectResult}
+                  projects={projects}
+                  remoteForm={remoteForm}
+                  onProjectAction={(action) => void handleProjectAction(action)}
+                  onRemoteFormChange={updateRemoteForm}
+                  onSelectProject={setSelectedProject}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate replace to="/" />} />
+          </Routes>
         </div>
         {stats ? (
           <footer className="workspace__footer">
@@ -553,5 +505,13 @@ export function App() {
         ) : null}
       </main>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <DesktopAppShell />
+    </BrowserRouter>
   );
 }

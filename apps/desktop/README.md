@@ -10,23 +10,20 @@
 
 ## 当前能力
 
-桌面端当前采用“首页总览 + 二级工作页”的桌面信息架构：
+桌面端当前采用“首页总览 + 文档中心 + 二级工作区”的信息架构：
 
-- 首页：一屏承载仓库切换、本地目录选择、全局搜索、结构总览、功能入口和最近操作
-- 文档页：列表、搜索、按 `type/status/project/date/theme/tag/source` 过滤，配合文档信号条进入聚焦视图
-- 文档编辑：frontmatter 字段编辑、Markdown 正文编辑与预览、文档档案条与路径复制
-- 创建页：`daily / note / decision / review / project` 配方台
+- 首页：一屏承载全局搜索、概览卡和最近动态
+- 文档页：表格化索引、搜索、按 `type/status/project/date/theme/tag/source` 过滤，配合文档信号条进入聚焦视图
+- 文档工作区：创建或编辑文档时进入独立页面，左侧 Markdown 编辑，右侧实时预览
 - 资源页：查看 `asset-list`，按仓库级 / 项目级切换浏览，并导入仓库级或项目级资源
 - 校验与导出页：`validate`、`document-list`、`manifest`、`change-list`、`asset-list`
 - 项目页：`add-remote`、`fetch`、`push`、`sync`
 
-桌面端当前也已经补上了更完整的反馈层和视觉资产：
+桌面端当前也已经补上了更完整的视觉资产：
 
 - 左侧品牌区加入桌面端专用的几何星系 logo
-- 首页只做概览和分发，不再默认把所有工作台直接展开
+- 首页只做概览和搜索，不再默认把所有工作台直接展开
 - 文档、资源和编辑区都提供空状态引导
-- 创建、保存、导入、校验、导出与项目命令完成后，结果会进入“最近操作”反馈层，并在首页和二级页都可见
-- 各二级工作页都保留 section hero，用来解释当前区域职责，并提供快捷动作，例如新建 Note、重置文档视图、快速校验
 - 整体视觉方向保持“结构星系控制台”，而不是普通后台风格
 
 ## 运行依赖
@@ -59,17 +56,18 @@ cargo test --manifest-path src-tauri/Cargo.toml
 npm run tauri dev
 ```
 
-构建前端与 Tauri 后端：
+构建桌面端产物：
 
 ```bash
 npm run build
-cargo build --manifest-path src-tauri/Cargo.toml
 ```
+
+这里的正式产物来自 `tauri build`，输出位于 `src-tauri/target/release/bundle/`。`vite build` 只是构建过程中的前端编译步骤，不是桌面端交付物。
 
 ## 设计约束
 
 - 首页必须控制在一屏内，只负责概览、搜索和导航分发
-- 具体编辑、导入、校验和项目操作应进入二级工作页，而不是继续堆回首页
+- 具体编辑、导入、校验和项目操作应进入二级工作区，而不是继续堆回首页
 - 首版只支持一个活动知识仓库，但会记录最近打开仓库
 - Go / Rust CLI 当前不作为桌面端运行时后端
 - 资源面板展示 `sha256`，但当前不自动做去重处理
@@ -80,9 +78,9 @@ cargo build --manifest-path src-tauri/Cargo.toml
 
 桌面端已经接入仓库级 GitHub Actions：
 
-- `ci.yml` 会执行桌面端组件测试、前端构建和 Tauri Rust 后端 `cargo check`
-- `integration.yml` 会构建桌面端前端产物并上传 artifact
-- `release.yml` 会把桌面端前端产物一并纳入 nightly 发布物
+- `ci.yml` 会执行桌面端组件测试、Tauri Rust 后端 `cargo check` 和桌面 bundle 构建
+- `integration.yml` 会构建桌面端 Tauri bundle 并上传 artifact
+- `release.yml` 会把桌面端 Tauri bundle 一并纳入 nightly 发布物
 
 ## 后续方向
 
