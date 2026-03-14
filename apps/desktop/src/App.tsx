@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  chooseRepoDirectory,
   createDocument,
   getDocument,
   getRecentRepos,
@@ -295,6 +296,18 @@ export function App() {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
   };
+  const handleOpenRepoDirectory = async () => {
+    try {
+      const selected = await chooseRepoDirectory();
+      if (!selected) {
+        return;
+      }
+      await refreshOverview(selected);
+      recordActivity("已切换仓库", selected, "通过系统目录选择器");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
 
   useEffect(() => {
     void refreshOverview();
@@ -490,18 +503,20 @@ export function App() {
       <Sidebar section={section} onChange={setSection} />
       <main className="workspace">
         <header className="workspace__header">
-          <div>
-            <span className="eyebrow">ACTIVE REPOSITORY</span>
-            <h2>{repo?.path ?? "~/.knowledge-galax"}</h2>
-            <p>{repo?.exists ? "已连接到当前知识库" : "将使用默认知识库路径"}</p>
-          </div>
           <div className="repo-switcher">
+            <div className="repo-switcher__header">
+              <span className="eyebrow">REPOSITORY SWITCHER</span>
+              <p>输入路径或直接打开本地目录，桌面端会切到对应知识库。</p>
+            </div>
             <div className="repo-switcher__main">
               <input
                 value={repoPathInput}
                 onChange={(event) => setRepoPathInput(event.currentTarget.value)}
                 placeholder="输入仓库路径，留空使用默认路径"
               />
+              <button className="ghost-button" type="button" onClick={() => void handleOpenRepoDirectory()}>
+                打开目录
+              </button>
               <button type="button" onClick={() => void refreshOverview(repoPathInput || undefined)}>
                 切换仓库
               </button>
@@ -529,11 +544,6 @@ export function App() {
               <span className="eyebrow">STRUCTURAL DESK</span>
               <h3>结构总控台</h3>
               <p>用结构线、轨道和稳定的工作区，把知识库组织成可长期维护的个人系统。</p>
-            </div>
-            <div className="desktop-masthead__repo">
-              <span className="eyebrow">当前仓库</span>
-              <strong>{repo?.path ?? "~/.knowledge-galaxy"}</strong>
-              <span>{repo?.exists ? "已连接到当前知识库" : "当前使用默认知识库路径"}</span>
             </div>
           </div>
           <div className="desktop-masthead__orbit">

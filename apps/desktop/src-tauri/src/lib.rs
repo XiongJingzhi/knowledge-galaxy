@@ -972,6 +972,7 @@ fn run_project_command(
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let store_path = app_config_path(&app.handle());
             let recent = RecentRepoStore::load(&store_path);
