@@ -104,22 +104,34 @@ export function DocumentEditor({
       <div className="detail-panel__workspace" data-testid="document-workspace-content">
         <div className="document-editor-grid">
           <section className="editor-column">
-            <label className="field field--wide">
-              <span>标题</span>
-              <input
-                aria-label="标题"
-                value={draft.title}
-                onChange={(event) => patch({ title: event.currentTarget.value })}
-              />
-            </label>
-            <label className="field field--editor">
-              <span>Markdown 编辑</span>
-              <textarea
-                aria-label="Markdown 正文"
-                value={draft.body}
-                onChange={(event) => patch({ body: event.currentTarget.value })}
-              />
-            </label>
+            <section className="document-writer" data-testid="document-writer">
+              <div className="document-writer__context">
+                <span className="eyebrow">{mode === "create" ? "新建文档" : "文档工作区"}</span>
+                <strong>{draft.path || "路径将在保存后生成"}</strong>
+              </div>
+              <label className="document-writer__title">
+                <span>标题</span>
+                <input
+                  aria-label="标题"
+                  placeholder="输入文档标题"
+                  value={draft.title}
+                  onChange={(event) => patch({ title: event.currentTarget.value })}
+                />
+              </label>
+              <section className="document-writer__body">
+                <div className="document-writer__body-header">
+                  <span className="document-writer__badge" data-testid="document-writer-badge">
+                    Markdown 编辑
+                  </span>
+                </div>
+                <textarea
+                  aria-label="Markdown 正文"
+                  placeholder="从这里开始整理你的 Markdown 文档..."
+                  value={draft.body}
+                  onChange={(event) => patch({ body: event.currentTarget.value })}
+                />
+              </section>
+            </section>
           </section>
           <aside className="preview-panel">
             <div className="preview-panel__header">

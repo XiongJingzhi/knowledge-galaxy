@@ -56,6 +56,7 @@ describe("DocumentEditor", () => {
   it("renders editing fields and preview metadata", () => {
     render(<DocumentEditor document={detail} onSave={() => undefined} />);
 
+    expect(screen.getByTestId("document-writer")).toBeInTheDocument();
     expect(screen.getByText("Markdown 编辑")).toBeInTheDocument();
     expect(screen.getByText("实时预览")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Idea")).toBeInTheDocument();
@@ -67,6 +68,15 @@ describe("DocumentEditor", () => {
     expect(screen.getByText("knowledge")).toBeInTheDocument();
     expect(screen.getByText("atlas")).toBeInTheDocument();
     expect(screen.queryByLabelText("日期")).not.toBeInTheDocument();
+  });
+
+  it("renders the title input and body editor inside a unified writer surface", () => {
+    render(<DocumentEditor document={detail} onSave={() => undefined} />);
+
+    const writer = screen.getByTestId("document-writer");
+    expect(writer).toContainElement(screen.getByLabelText("标题"));
+    expect(writer).toContainElement(screen.getByLabelText("Markdown 正文"));
+    expect(screen.getByTestId("document-writer-badge")).toHaveTextContent("Markdown 编辑");
   });
 
   it("copies the document path from the dossier strip", async () => {

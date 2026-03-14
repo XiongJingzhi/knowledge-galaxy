@@ -1909,15 +1909,116 @@ pre {
 .editor-column {
   display: grid;
   gap: 14px;
+  min-height: 0;
+}
+
+.document-writer {
+  display: grid;
+  gap: 22px;
+  min-height: 100%;
+  padding: 24px 28px 28px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.06), transparent 30%),
+    rgba(9, 13, 19, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.document-writer__context {
+  display: grid;
+  gap: 8px;
+}
+
+.document-writer__context strong {
+  color: var(--ink);
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  word-break: break-all;
+}
+
+.document-writer__title {
+  display: grid;
+  gap: 10px;
+}
+
+.document-writer__title span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.document-writer__title input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-size: clamp(2rem, 3vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.document-writer__title input::placeholder {
+  color: rgba(226, 232, 240, 0.28);
+}
+
+.document-writer__body {
+  display: grid;
+  gap: 14px;
+  min-height: 0;
+  padding: 22px 22px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 24px;
+  background: rgba(5, 8, 13, 0.7);
+}
+
+.document-writer__body-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.document-writer__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.08);
+  color: rgba(253, 186, 116, 0.92);
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.document-writer__body textarea {
+  width: 100%;
+  min-height: 560px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.02rem;
+  line-height: 1.8;
+}
+
+.document-writer__body textarea::placeholder {
+  color: rgba(148, 163, 184, 0.52);
 }
 
 .detail-panel__meta--dense {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-}
-
-.detail-panel--workspace .field textarea {
-  min-height: 540px;
 }
 
 .markdown-preview__meta {
@@ -1958,6 +2059,10 @@ pre {
 
   .section-hero__actions {
     justify-content: flex-start;
+  }
+
+  .document-writer__body textarea {
+    min-height: 360px;
   }
 }
 
