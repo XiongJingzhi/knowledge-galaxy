@@ -15,9 +15,12 @@ export function AssetsPage({
   onChooseKnowledgeSource,
   onAnalyzeKnowledgeMigration,
   onImportKnowledgeMigration,
+  onOpenImportedDocument,
   onAssetProjectFilterChange,
   onAssetScopeChange,
+  onMigrationDraftChange,
   onMigrationFormChange,
+  onRemoveMigrationDraft,
   onSelectAsset,
   onImportAsset,
 }: {
@@ -41,9 +44,12 @@ export function AssetsPage({
   onChooseKnowledgeSource: () => void;
   onAnalyzeKnowledgeMigration: () => void;
   onImportKnowledgeMigration: () => void;
+  onOpenImportedDocument: (path: string) => void;
   onAssetProjectFilterChange: (value: string) => void;
   onAssetScopeChange: (value: "all" | "repo" | "project") => void;
+  onMigrationDraftChange: (index: number, field: "title" | "type" | "summary", value: string) => void;
   onMigrationFormChange: (field: "filePath" | "model", value: string) => void;
+  onRemoveMigrationDraft: (index: number) => void;
   onSelectAsset: (path: string) => void;
   onImportAsset: () => void;
 }) {
@@ -214,13 +220,45 @@ export function AssetsPage({
                 </ul>
               ) : null}
               <div className="migration-preview__list">
-                {migrationPreview.drafts.map((draft) => (
+                {migrationPreview.drafts.map((draft, index) => (
                   <article className="migration-preview__item" key={`${draft.path}-${draft.originLabel}`}>
-                    <div className="migration-preview__heading">
-                      <strong>{draft.title}</strong>
-                      <span>{draft.type}</span>
+                    <div className="migration-preview__draft-actions">
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        onClick={() => onRemoveMigrationDraft(index)}
+                        aria-label={`移除候选项 ${draft.title}`}
+                      >
+                        移除
+                      </button>
                     </div>
-                    <p>{draft.summary}</p>
+                    <label className="field field--tight">
+                      <span>标题</span>
+                      <input
+                        value={draft.title}
+                        onChange={(event) => onMigrationDraftChange(index, "title", event.currentTarget.value)}
+                      />
+                    </label>
+                    <label className="field field--tight">
+                      <span>类型</span>
+                      <select
+                        value={draft.type}
+                        onChange={(event) => onMigrationDraftChange(index, "type", event.currentTarget.value)}
+                      >
+                        <option value="note">note</option>
+                        <option value="decision">decision</option>
+                        <option value="review">review</option>
+                        <option value="reference">reference</option>
+                      </select>
+                    </label>
+                    <label className="field field--tight">
+                      <span>摘要</span>
+                      <textarea
+                        rows={3}
+                        value={draft.summary}
+                        onChange={(event) => onMigrationDraftChange(index, "summary", event.currentTarget.value)}
+                      />
+                    </label>
                     <div className="migration-preview__meta">
                       <code>{draft.path}</code>
                       <span>{draft.originLabel}</span>
@@ -248,7 +286,14 @@ export function AssetsPage({
                   <article className="migration-preview__item" key={path}>
                     <div className="migration-preview__meta">
                       <code>{path}</code>
-                      <span>已写入知识星系</span>
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        aria-label={`打开文档 ${path}`}
+                        onClick={() => onOpenImportedDocument(path)}
+                      >
+                        打开文档
+                      </button>
                     </div>
                   </article>
                 ))}

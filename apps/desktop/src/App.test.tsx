@@ -334,9 +334,9 @@ describe("App", () => {
       });
     });
 
-    expect(await screen.findByText("Architecture Notes")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Architecture Notes")).toBeInTheDocument();
     expect(screen.getByText("notes/architecture-notes.md")).toBeInTheDocument();
-    expect(screen.getByText("Imported architecture note")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Imported architecture note")).toBeInTheDocument();
   });
 
   it("imports migration drafts and records imported knowledge activity", async () => {
@@ -380,7 +380,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "选择知识源" }));
     await screen.findByDisplayValue("/tmp/import.md");
     fireEvent.click(screen.getByRole("button", { name: "生成迁移预览" }));
-    await screen.findByText("Imported Review");
+    await screen.findByDisplayValue("Imported Review");
 
     fireEvent.click(screen.getByRole("button", { name: "导入知识" }));
 
@@ -399,6 +399,118 @@ describe("App", () => {
     });
 
     expect(await screen.findByText("已导入知识")).toBeInTheDocument();
+    expect(screen.getAllByText("reviews/imported-review.md").length).toBeGreaterThan(0);
+  });
+
+  it("edits migration drafts before import and removes unwanted candidates", async () => {
+    mockedApi.chooseKnowledgeSourceFile.mockResolvedValue("/tmp/knowledge-bundle.zip");
+    mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
+      sourceLabel: "knowledge-bundle.zip",
+      drafts: [
+        {
+          title: "First Draft",
+          type: "note",
+          summary: "first summary",
+          body: "first body",
+          theme: [],
+          tags: [],
+          source: ["knowledge-bundle.zip"],
+          status: "inbox",
+          path: "notes/first-draft.md",
+          originLabel: "first.md",
+        },
+        {
+          title: "Second Draft",
+          type: "reference",
+          summary: "second summary",
+          body: "second body",
+          theme: [],
+          tags: [],
+          source: ["knowledge-bundle.zip"],
+          status: "inbox",
+          path: "references/second-draft.md",
+          originLabel: "second.md",
+        },
+      ],
+      warnings: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择知识源" }));
+    await screen.findByDisplayValue("/tmp/knowledge-bundle.zip");
+    fireEvent.click(screen.getByRole("button", { name: "生成迁移预览" }));
+    await screen.findByDisplayValue("First Draft");
+
+    fireEvent.change(screen.getByDisplayValue("First Draft"), {
+      target: { value: "Edited Draft" },
+    });
+    fireEvent.change(screen.getByDisplayValue("note"), {
+      target: { value: "decision" },
+    });
+    fireEvent.change(screen.getByDisplayValue("first summary"), {
+      target: { value: "edited summary" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "移除候选项 Second Draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "导入知识" }));
+
+    await waitFor(() => {
+      expect(mockedApi.importKnowledgeMigration).toHaveBeenCalledWith({
+        filePath: "/tmp/knowledge-bundle.zip",
+        model: "llama3.2",
+        drafts: [
+          expect.objectContaining({
+            title: "Edited Draft",
+            type: "decision",
+            summary: "edited summary",
+          }),
+        ],
+      });
+    });
+  });
+
+  it("opens an imported migration document from the result panel", async () => {
+    mockedApi.chooseKnowledgeSourceFile.mockResolvedValue("/tmp/import.md");
+    mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
+      sourceLabel: "import.md",
+      drafts: [
+        {
+          title: "Imported Review",
+          type: "review",
+          summary: "Weekly migration review",
+          body: "## What Happened\n\nImported content.",
+          theme: ["ops"],
+          tags: ["weekly"],
+          source: ["import.md"],
+          status: "inbox",
+          path: "reviews/imported-review.md",
+          originLabel: "import.md",
+        },
+      ],
+      warnings: [],
+    });
+    mockedApi.importKnowledgeMigration.mockResolvedValue({
+      imported: 1,
+      createdPaths: ["reviews/imported-review.md"],
+      warnings: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择知识源" }));
+    await screen.findByDisplayValue("/tmp/import.md");
+    fireEvent.click(screen.getByRole("button", { name: "生成迁移预览" }));
+    await screen.findByDisplayValue("Imported Review");
+    fireEvent.click(screen.getByRole("button", { name: "导入知识" }));
+    await screen.findByText("已导入知识");
+
+    fireEvent.click(screen.getByRole("button", { name: "打开文档 reviews/imported-review.md" }));
+
+    expect(await screen.findByRole("heading", { name: "编辑文档" })).toBeInTheDocument();
     expect(screen.getAllByText("reviews/imported-review.md").length).toBeGreaterThan(0);
   });
 

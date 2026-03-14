@@ -70,7 +70,7 @@ npm run build
 
 - 选择本地 `md`、`markdown`、`txt` 或 `zip`
 - 输入本地 `Ollama` 模型名
-- 先生成迁移预览，再确认导入
+- 先生成迁移预览，可在导入前修改标题、类型、摘要或移除候选项，再确认导入
 - 导入结果会写入 `notes/`、`decisions/`、`reviews/`、`references/`
 
 ## 设计约束

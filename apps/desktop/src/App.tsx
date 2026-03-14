@@ -42,6 +42,7 @@ import type {
   DocumentDetail,
   DocumentFilters,
   DocumentListItem,
+  KnowledgeMigrationDraft,
   KnowledgeMigrationImportResult,
   KnowledgeMigrationPreview,
   NavSection,
@@ -460,6 +461,39 @@ function DesktopAppShell() {
     setMigrationForm((current) => ({ ...current, [field]: value }));
   };
 
+  const updateMigrationDraft = (
+    index: number,
+    field: "title" | "type" | "summary",
+    value: string,
+  ) => {
+    setMigrationPreview((current) => {
+      if (!current) {
+        return current;
+      }
+      const drafts = current.drafts.map((draft, draftIndex) =>
+        draftIndex === index ? ({ ...draft, [field]: value } as KnowledgeMigrationDraft) : draft,
+      );
+      return { ...current, drafts };
+    });
+  };
+
+  const removeMigrationDraft = (index: number) => {
+    setMigrationPreview((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        drafts: current.drafts.filter((_, draftIndex) => draftIndex !== index),
+      };
+    });
+  };
+
+  const openImportedMigrationDocument = (path: string) => {
+    setSelectedPath(path);
+    navigate(`/documents/edit?path=${encodeURIComponent(path)}`);
+  };
+
   const updateRemoteForm = (field: "name" | "url" | "remote" | "branch", value: string) => {
     setRemoteForm((current) => ({ ...current, [field]: value }));
   };
@@ -563,7 +597,10 @@ function DesktopAppShell() {
                   onImportKnowledgeMigration={() => void handleImportKnowledgeMigration()}
                   onAssetProjectFilterChange={setAssetProjectFilter}
                   onAssetScopeChange={setAssetScope}
+                  onOpenImportedDocument={openImportedMigrationDocument}
+                  onMigrationDraftChange={updateMigrationDraft}
                   onMigrationFormChange={updateMigrationForm}
+                  onRemoveMigrationDraft={removeMigrationDraft}
                   onSelectAsset={setSelectedAssetPath}
                   onImportAsset={() => void handleImportAsset()}
                 />
