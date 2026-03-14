@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { AssetRecord, KnowledgeMigrationImportResult, KnowledgeMigrationPreview } from "../lib/types";
 import { AssetTable } from "../components/AssetTable";
 
@@ -53,6 +54,18 @@ export function AssetsPage({
   onSelectAsset: (path: string) => void;
   onImportAsset: () => void;
 }) {
+  const [expandedDrafts, setExpandedDrafts] = useState<number[]>([]);
+
+  useEffect(() => {
+    setExpandedDrafts([]);
+  }, [migrationPreview?.sourceLabel, migrationPreview?.drafts.length]);
+
+  const toggleDraft = (index: number) => {
+    setExpandedDrafts((current) =>
+      current.includes(index) ? current.filter((value) => value !== index) : [...current, index],
+    );
+  };
+
   return (
     <div className="content-grid asset-workbench">
       <div className="panel-stack asset-index-panel">
@@ -226,6 +239,14 @@ export function AssetsPage({
                       <button
                         className="ghost-button"
                         type="button"
+                        aria-label={`${expandedDrafts.includes(index) ? "收起候选项" : "展开候选项"} ${draft.title}`}
+                        onClick={() => toggleDraft(index)}
+                      >
+                        {expandedDrafts.includes(index) ? "收起详情" : "查看详情"}
+                      </button>
+                      <button
+                        className="ghost-button"
+                        type="button"
                         onClick={() => onRemoveMigrationDraft(index)}
                         aria-label={`移除候选项 ${draft.title}`}
                       >
@@ -263,6 +284,20 @@ export function AssetsPage({
                       <code>{draft.path}</code>
                       <span>{draft.originLabel}</span>
                     </div>
+                    {expandedDrafts.includes(index) ? (
+                      <div className="migration-preview__review">
+                        <div className="migration-preview__review-section">
+                          <span className="eyebrow">SOURCE</span>
+                          <strong>原始来源</strong>
+                          <code>{draft.originLabel}</code>
+                        </div>
+                        <div className="migration-preview__review-section">
+                          <span className="eyebrow">MARKDOWN</span>
+                          <strong>正文预览</strong>
+                          <pre>{draft.body || "*没有正文内容*"}</pre>
+                        </div>
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>

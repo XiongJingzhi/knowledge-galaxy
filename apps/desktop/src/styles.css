@@ -1170,6 +1170,7 @@ pre {
 
 .migration-preview__draft-actions {
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
 }
 
@@ -1200,6 +1201,41 @@ pre {
 .migration-preview__meta span {
   color: rgba(183, 194, 209, 0.78);
   font-size: 13px;
+}
+
+.migration-preview__review {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background:
+    linear-gradient(180deg, rgba(59, 130, 246, 0.06), transparent 55%),
+    rgba(13, 18, 26, 0.88);
+}
+
+.migration-preview__review-section {
+  display: grid;
+  gap: 6px;
+}
+
+.migration-preview__review-section strong {
+  font-family: "Avenir Next", "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+.migration-preview__review-section code,
+.migration-preview__review-section pre {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(5, 8, 12, 0.74);
+  color: rgba(229, 237, 247, 0.88);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .draft-panel .field--editor {

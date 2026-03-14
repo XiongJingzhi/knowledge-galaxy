@@ -339,6 +339,44 @@ describe("App", () => {
     expect(screen.getByDisplayValue("Imported architecture note")).toBeInTheDocument();
   });
 
+  it("expands a migration draft to review origin and markdown body before import", async () => {
+    mockedApi.chooseKnowledgeSourceFile.mockResolvedValue("/tmp/knowledge-bundle.zip");
+    mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
+      sourceLabel: "knowledge-bundle.zip",
+      drafts: [
+        {
+          title: "Architecture Notes",
+          type: "note",
+          summary: "Imported architecture note",
+          body: "## Summary\n\nMigrated from zip.",
+          theme: ["knowledge"],
+          tags: ["migration"],
+          source: ["knowledge-bundle.zip"],
+          status: "inbox",
+          path: "notes/architecture-notes.md",
+          originLabel: "notes/architecture.md",
+        },
+      ],
+      warnings: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择知识源" }));
+    await screen.findByDisplayValue("/tmp/knowledge-bundle.zip");
+    fireEvent.click(screen.getByRole("button", { name: "生成迁移预览" }));
+    await screen.findByDisplayValue("Architecture Notes");
+
+    fireEvent.click(screen.getByRole("button", { name: "展开候选项 Architecture Notes" }));
+
+    expect(await screen.findByText("原始来源")).toBeInTheDocument();
+    expect(screen.getAllByText("notes/architecture.md").length).toBeGreaterThan(1);
+    expect(screen.getByText("正文预览")).toBeInTheDocument();
+    expect(screen.getByText(/Migrated from zip\./)).toBeInTheDocument();
+  });
+
   it("imports migration drafts and records imported knowledge activity", async () => {
     mockedApi.chooseKnowledgeSourceFile.mockResolvedValue("/tmp/import.md");
     mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
@@ -512,6 +550,62 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "编辑文档" })).toBeInTheDocument();
     expect(screen.getAllByText("reviews/imported-review.md").length).toBeGreaterThan(0);
+  });
+
+  it("opens the selected imported document when multiple migration results exist", async () => {
+    mockedApi.chooseKnowledgeSourceFile.mockResolvedValue("/tmp/import.md");
+    mockedApi.analyzeKnowledgeMigration.mockResolvedValue({
+      sourceLabel: "import.md",
+      drafts: [
+        {
+          title: "Imported Review",
+          type: "review",
+          summary: "Weekly migration review",
+          body: "## What Happened\n\nImported content.",
+          theme: ["ops"],
+          tags: ["weekly"],
+          source: ["import.md"],
+          status: "inbox",
+          path: "reviews/imported-review.md",
+          originLabel: "import.md",
+        },
+        {
+          title: "Ship Note",
+          type: "note",
+          summary: "Ship update",
+          body: "Captured from desktop.",
+          theme: ["product"],
+          tags: ["ship"],
+          source: ["import.md"],
+          status: "inbox",
+          path: "notes/ship-note.md",
+          originLabel: "ship-note.md",
+        },
+      ],
+      warnings: [],
+    });
+    mockedApi.importKnowledgeMigration.mockResolvedValue({
+      imported: 2,
+      createdPaths: ["reviews/imported-review.md", "notes/ship-note.md"],
+      warnings: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择知识源" }));
+    await screen.findByDisplayValue("/tmp/import.md");
+    fireEvent.click(screen.getByRole("button", { name: "生成迁移预览" }));
+    await screen.findByDisplayValue("Imported Review");
+    fireEvent.click(screen.getByRole("button", { name: "导入知识" }));
+    await screen.findByText("已导入知识");
+
+    fireEvent.click(screen.getByRole("button", { name: "打开文档 notes/ship-note.md" }));
+
+    expect(await screen.findByRole("heading", { name: "编辑文档" })).toBeInTheDocument();
+    expect(screen.getAllByText("notes/ship-note.md").length).toBeGreaterThan(0);
+    expect(mockedApi.getDocument).toHaveBeenCalledWith("notes/ship-note.md");
   });
 
   it("chooses a local asset file and fills the import form", async () => {
