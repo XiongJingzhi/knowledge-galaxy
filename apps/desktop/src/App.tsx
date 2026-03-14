@@ -48,6 +48,41 @@ const defaultDetail: DocumentDetail = {
   gitWorktree: "",
 };
 
+const sectionDeskCopy: Record<
+  NavSection,
+  {
+    title: string;
+    description: string;
+    index: string;
+  }
+> = {
+  documents: {
+    title: "文档工作台",
+    description: "围绕当前知识切片组织检索、筛选、阅读与编辑。",
+    index: "01",
+  },
+  create: {
+    title: "创建中心",
+    description: "把新知识快速落到正确模板和路径，保持结构先于表达。",
+    index: "02",
+  },
+  assets: {
+    title: "资源台账",
+    description: "统一查看仓库级与项目级资源，控制作用域而不是堆叠文件。",
+    index: "03",
+  },
+  ops: {
+    title: "校验与导出",
+    description: "在发布前集中检查知识库状态，保留可回看的验证与导出轨迹。",
+    index: "04",
+  },
+  projects: {
+    title: "项目桥",
+    description: "把知识库中的项目文档与真实代码仓库联接成可操作的桥面。",
+    index: "05",
+  },
+};
+
 export function App() {
   const [section, setSection] = useState<NavSection>("documents");
   const [repoPathInput, setRepoPathInput] = useState("");
@@ -188,6 +223,50 @@ export function App() {
       [filterKey]: value,
     }));
   };
+  const createRecipes = [
+    {
+      type: "note",
+      title: "note",
+      description: "快速记录想法、摘录和临时知识片段。",
+      hint: "当前配方强调标题与正文，适合把即时内容直接写进知识库。",
+    },
+    {
+      type: "daily",
+      title: "daily",
+      description: "围绕某一天收集节奏、进展和捕获记录。",
+      hint: "当前配方强调日期，用于把一天的工作线索落到 daily 文档里。",
+    },
+    {
+      type: "decision",
+      title: "decision",
+      description: "记录一个明确的判断、选型或取舍。",
+      hint: "当前配方强调标题与摘要，适合保留可复盘的决策上下文。",
+    },
+    {
+      type: "review",
+      title: "review",
+      description: "沉淀阶段性复盘、周报或迭代总结。",
+      hint: "当前配方需要标题与日期，适合形成时间明确的复盘条目。",
+    },
+    {
+      type: "project",
+      title: "project",
+      description: "把知识库项目条目联接到实际代码或工作目录。",
+      hint: "当前配方需要标题与 Git Worktree，用于把知识库项目条目接到真实代码目录。",
+    },
+  ] as const;
+  const activeCreateRecipe =
+    createRecipes.find((recipe) => recipe.type === createForm.type) ?? createRecipes[0];
+  const deskSection = sectionDeskCopy[section];
+  const desktopMetrics = useMemo(
+    () => [
+      { label: "知识结构总量", value: String(stats?.total ?? 0) },
+      { label: "资产库存", value: String(assets.length) },
+      { label: "项目桥接数", value: String(projects.length) },
+      { label: "操作回流", value: String(activityItems.length) },
+    ],
+    [activityItems.length, assets.length, projects.length, stats?.total],
+  );
   const refreshOverview = async (repoPath?: string) => {
     try {
       const summary = await selectRepo(repoPath);
@@ -444,6 +523,37 @@ export function App() {
           </div>
         </header>
         {error ? <div className="error-banner">{error}</div> : null}
+        <section className="desktop-masthead" aria-label="结构总控台">
+          <div className="desktop-masthead__core">
+            <div className="desktop-masthead__headline">
+              <span className="eyebrow">STRUCTURAL DESK</span>
+              <h3>结构总控台</h3>
+              <p>用结构线、轨道和稳定的工作区，把知识库组织成可长期维护的个人系统。</p>
+            </div>
+            <div className="desktop-masthead__repo">
+              <span className="eyebrow">当前仓库</span>
+              <strong>{repo?.path ?? "~/.knowledge-galaxy"}</strong>
+              <span>{repo?.exists ? "已连接到当前知识库" : "当前使用默认知识库路径"}</span>
+            </div>
+          </div>
+          <div className="desktop-masthead__orbit">
+            <article className="desktop-masthead__context">
+              <span className="eyebrow">当前区段</span>
+              <strong>
+                {deskSection.index} · {deskSection.title}
+              </strong>
+              <p>{deskSection.description}</p>
+            </article>
+            <div className="desktop-masthead__metrics">
+              {desktopMetrics.map((metric) => (
+                <article key={metric.label} className="desktop-metric">
+                  <span className="desktop-metric__label">{metric.label}</span>
+                  <strong className="desktop-metric__value">{metric.value}</strong>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
         <div className="workspace__content">
           <section className="overview-strip">
             {overviewCards.map((card) => (
@@ -577,6 +687,34 @@ export function App() {
               <div className="panel__header">
                 <h3>创建中心</h3>
                 <span>调用现有 Python CLI</span>
+              </div>
+              <section className="recipe-rail" aria-label="模板配方台">
+                <div className="panel__header recipe-rail__header">
+                  <h3>模板配方台</h3>
+                  <span>先选模板，再补当前类型最关键的字段</span>
+                </div>
+                <div className="recipe-rail__grid">
+                  {createRecipes.map((recipe) => (
+                    <button
+                      key={recipe.type}
+                      className={
+                        recipe.type === createForm.type ? "recipe-card is-active" : "recipe-card"
+                      }
+                      type="button"
+                      aria-label={`切换到 ${recipe.type} 配方`}
+                      onClick={() =>
+                        setCreateForm((current) => ({ ...current, type: recipe.type }))
+                      }
+                    >
+                      <span className="recipe-card__title">{recipe.title}</span>
+                      <span className="recipe-card__description">{recipe.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <div className="create-context">
+                <strong>{activeCreateRecipe.title} 配方</strong>
+                <span>{activeCreateRecipe.hint}</span>
               </div>
               <div className="form-grid">
                 <label className="field">

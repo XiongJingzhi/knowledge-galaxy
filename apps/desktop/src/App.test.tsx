@@ -101,7 +101,7 @@ describe("App", () => {
   it("switches repository when clicking a recent repo entry", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "/tmp/alt-repo" }));
 
@@ -113,20 +113,31 @@ describe("App", () => {
   it("renders overview cards from repository stats", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     expect(await screen.findByText("总文档")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getAllByText("12").length).toBeGreaterThan(0);
     expect(screen.getByText("type · note")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
     expect(screen.getByText("status · active")).toBeInTheDocument();
     expect(screen.getByText("theme · knowledge")).toBeInTheDocument();
   });
 
+  it("renders the structural desktop masthead with current section context", async () => {
+    render(<App />);
+
+    await screen.findAllByText("/tmp/default-repo");
+
+    expect(screen.getByText("结构总控台")).toBeInTheDocument();
+    expect(screen.getByText("当前区段")).toBeInTheDocument();
+    expect(screen.getByText(/文档工作台/)).toBeInTheDocument();
+    expect(screen.getByText("知识结构总量")).toBeInTheDocument();
+  });
+
   it("shows an empty-state message when the current document view has no results", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     expect(
       await screen.findByText("当前视图没有文档结果"),
@@ -137,7 +148,7 @@ describe("App", () => {
   it("switches to the create workbench with note preset from the documents hero", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "新建 Note" }));
 
@@ -148,7 +159,7 @@ describe("App", () => {
   it("clears the current search and filters from the documents hero", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.change(screen.getByLabelText("搜索"), {
       target: { value: "search phrase" },
@@ -171,7 +182,7 @@ describe("App", () => {
   it("renders document signal cards from the top stats groups", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     expect(screen.getByText("文档信号条")).toBeInTheDocument();
     expect(screen.getByText("active")).toBeInTheDocument();
@@ -182,7 +193,7 @@ describe("App", () => {
   it("applies a status focus from the document signal rail and clears the current query", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.change(screen.getByLabelText("搜索"), {
       target: { value: "search phrase" },
@@ -202,7 +213,7 @@ describe("App", () => {
   it("runs project add-remote with the selected project and remote form values", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "项目" }));
     fireEvent.click(screen.getByRole("button", { name: "Orion orion" }));
@@ -240,7 +251,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "创建" }));
     fireEvent.change(screen.getByLabelText("标题"), {
@@ -266,6 +277,31 @@ describe("App", () => {
     expect(screen.getByText("notes/ship-note.md")).toBeInTheDocument();
   });
 
+  it("renders recipe cards in the create center", async () => {
+    render(<App />);
+
+    await screen.findAllByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+
+    expect(screen.getByText("模板配方台")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "切换到 note 配方" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "切换到 project 配方" })).toBeInTheDocument();
+  });
+
+  it("switches create context when choosing the project recipe", async () => {
+    render(<App />);
+
+    await screen.findAllByText("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "创建" }));
+    fireEvent.click(screen.getByRole("button", { name: "切换到 project 配方" }));
+
+    expect(screen.getByDisplayValue("project")).toBeInTheDocument();
+    expect(screen.getByText("当前配方需要标题与 Git Worktree，用于把知识库项目条目接到真实代码目录。")).toBeInTheDocument();
+    expect(screen.getByLabelText("Git Worktree")).toBeInTheDocument();
+  });
+
   it("renders export content after running an export action", async () => {
     mockedApi.runExport.mockResolvedValue({
       kind: "manifest",
@@ -274,7 +310,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
     fireEvent.click(screen.getByRole("button", { name: "导出 manifest" }));
@@ -290,7 +326,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
     fireEvent.click(screen.getByRole("button", { name: "导出 manifest" }));
@@ -311,7 +347,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
     fireEvent.click(screen.getByRole("button", { name: "导出 asset-list" }));
@@ -376,7 +412,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.change(screen.getByLabelText("搜索"), {
       target: { value: "search phrase" },
@@ -392,7 +428,7 @@ describe("App", () => {
   it("re-queries document list when a status filter changes", async () => {
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.change(screen.getByLabelText("状态"), {
       target: { value: "active" },
@@ -417,7 +453,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "资源" }));
     fireEvent.change(screen.getByLabelText("本地文件路径"), {
@@ -453,7 +489,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
     fireEvent.click(screen.getByRole("button", { name: "运行校验" }));
@@ -468,7 +504,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("/tmp/default-repo");
+    await screen.findAllByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "校验与导出" }));
     fireEvent.click(screen.getByRole("button", { name: "运行校验" }));

@@ -18,12 +18,12 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <span className="sidebar__kicker">RESEARCH DESK</span>
+        <span className="sidebar__kicker">STRUCTURAL DESK</span>
         <h1>Knowledge Galaxy</h1>
-        <p>面向当前知识库的桌面工作台。</p>
+        <p>用结构组织当前知识库，而不是把内容堆成后台列表。</p>
         <div className="sidebar__seal">
           <strong>KG</strong>
-          <span>Archive Console</span>
+          <span>Core Console</span>
         </div>
       </div>
       <nav className="sidebar__nav">
