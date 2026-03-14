@@ -336,9 +336,20 @@ pre {
   width: min(860px, 100%);
 }
 
+.repo-switcher--command {
+  width: 100%;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  align-items: stretch;
+  gap: 20px;
+}
+
 .repo-switcher__header {
   display: grid;
   gap: 4px;
+}
+
+.repo-switcher__header h2 {
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
 }
 
 .repo-switcher__header p {
@@ -347,9 +358,50 @@ pre {
   line-height: 1.6;
 }
 
-.repo-switcher__main {
+.repo-switcher__command-copy,
+.repo-switcher__command-actions,
+.repo-switcher__rail,
+.repo-switcher__path-field {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) auto auto;
+  gap: 12px;
+}
+
+.repo-switcher__command-actions {
+  align-content: start;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 56%),
+    rgba(9, 13, 20, 0.6);
+}
+
+.repo-switcher__rail {
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background:
+    linear-gradient(180deg, rgba(59, 130, 246, 0.08), transparent 70%),
+    rgba(10, 15, 22, 0.62);
+}
+
+.repo-switcher__rail-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.repo-switcher__rail-header strong {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 1.1rem;
+}
+
+.repo-switcher__main {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -362,8 +414,8 @@ pre {
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(8, 12, 18, 0.72);
   color: var(--ink);
-  padding: 10px 12px;
-  font-size: 14px;
+  padding: 9px 11px;
+  font-size: 13px;
   transition:
     border-color 140ms ease,
     background 140ms ease,
@@ -883,6 +935,7 @@ pre {
 
 .content-grid {
   grid-template-columns: minmax(360px, 500px) 1fr;
+  align-items: start;
 }
 
 .field {
@@ -892,11 +945,11 @@ pre {
 
 .field span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .field textarea {
-  min-height: 220px;
+  min-height: 180px;
   resize: vertical;
 }
 
@@ -928,6 +981,10 @@ pre {
     rgba(9, 13, 20, 0.56);
 }
 
+.view-context--compact {
+  margin-bottom: 0;
+}
+
 .view-context span,
 .create-context span,
 .dossier-strip__header p,
@@ -944,6 +1001,42 @@ pre {
 
 .signal-rail {
   margin-bottom: 16px;
+}
+
+.document-shell {
+  grid-template-columns: minmax(300px, 0.8fr) minmax(300px, 0.86fr) minmax(420px, 1.34fr);
+}
+
+.document-command,
+.document-browser {
+  align-content: start;
+}
+
+.document-command {
+  gap: 16px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(59, 130, 246, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%),
+    rgba(11, 17, 25, 0.9);
+}
+
+.document-command__header {
+  align-items: start;
+}
+
+.document-filters-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 60%),
+    rgba(8, 12, 18, 0.58);
+}
+
+.document-browser {
+  min-height: 0;
 }
 
 .signal-rail__header,
@@ -1254,6 +1347,12 @@ pre {
   text-decoration: underline;
 }
 
+.list-panel {
+  align-content: start;
+  max-height: 720px;
+  overflow: auto;
+}
+
 .list-row,
 .asset-row {
   text-align: left;
@@ -1367,11 +1466,13 @@ pre {
 @media (max-width: 1180px) {
   .app-shell,
   .content-grid,
+  .document-shell,
   .detail-panel__workspace,
   .section-hero,
   .workspace__header,
   .home-toolbar,
-  .home-grid {
+  .home-grid,
+  .repo-switcher--command {
     grid-template-columns: 1fr;
   }
 

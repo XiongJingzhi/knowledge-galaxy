@@ -158,6 +158,16 @@ describe("App", () => {
     expect(screen.getByText("仓库状态")).toBeInTheDocument();
   });
 
+  it("renders the top shell as a command bar", async () => {
+    render(<App />);
+
+    await screen.findByDisplayValue("/tmp/default-repo");
+
+    expect(screen.getByText("命令台")).toBeInTheDocument();
+    expect(screen.getByText("最近仓库")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "默认仓库" })).toBeInTheDocument();
+  });
+
   it("navigates from home search to documents with the query applied", async () => {
     render(<App />);
 
@@ -228,6 +238,8 @@ describe("App", () => {
     await screen.findByDisplayValue("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
+    expect(await screen.findByText("文档指挥台")).toBeInTheDocument();
+    expect(screen.getByText("焦点筛选")).toBeInTheDocument();
     expect(
       await screen.findByText("当前视图没有文档结果"),
     ).toBeInTheDocument();

@@ -97,7 +97,7 @@ export function HomePage({
               <article className="home-status__card">
                 <span className="eyebrow">INDEX</span>
                 <strong>概览卡已同步</strong>
-                <p>总文档、资源、最近仓库和核心分布会跟随仓库切换自动刷新。</p>
+                <p>总文档、资源、仓库历史和核心分布会跟随仓库切换自动刷新。</p>
               </article>
             </div>
           </section>

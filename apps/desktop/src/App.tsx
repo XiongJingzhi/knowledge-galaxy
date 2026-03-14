@@ -196,7 +196,7 @@ export function App() {
     const cards: OverviewCard[] = [
       { label: "总文档", value: String(stats?.total ?? 0), accent: "signal" as const },
       { label: "资源数", value: String(assets.length), accent: "ink" as const },
-      { label: "最近仓库", value: String(recentRepos.length), accent: "muted" as const },
+      { label: "仓库历史", value: String(recentRepos.length), accent: "muted" as const },
     ];
     if (!stats) {
       return cards;

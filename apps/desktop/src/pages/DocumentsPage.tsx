@@ -31,20 +31,30 @@ export function DocumentsPage({
   onSave: (value: DocumentDetail) => Promise<void>;
 }) {
   return (
-    <div className="content-grid">
-      <section className="panel">
-        <div className="panel__header">
-          <h3>文档浏览</h3>
+    <div className="content-grid document-shell">
+      <section className="panel document-command">
+        <div className="panel__header document-command__header">
+          <div>
+            <span className="eyebrow">DOCUMENT DESK</span>
+            <h3>文档指挥台</h3>
+          </div>
           <span>{documents.length} 条</span>
         </div>
-        <div className="view-context">
+        <div className="view-context view-context--compact">
           <strong>{viewLabel}</strong>
-          <span>用搜索与筛选收敛你当前正在处理的知识切片。</span>
+          <span>在当前仓库里收敛焦点文档，再进入右侧编辑区继续修改内容和元数据。</span>
         </div>
         <label className="field field--wide">
           <span>搜索</span>
           <input value={query} onChange={(event) => onQueryChange(event.currentTarget.value)} />
         </label>
+        <section className="document-filters-panel" aria-label="焦点筛选">
+          <div className="panel__header signal-rail__header">
+            <h3>焦点筛选</h3>
+            <span>按类型、状态和标签快速收拢文档列表</span>
+          </div>
+          <FiltersPanel filters={filters} onChange={onFiltersChange} />
+        </section>
         {documentSignals.length ? (
           <section className="signal-rail" aria-label="文档信号条">
             <div className="panel__header signal-rail__header">
@@ -69,7 +79,12 @@ export function DocumentsPage({
             </div>
           </section>
         ) : null}
-        <FiltersPanel filters={filters} onChange={onFiltersChange} />
+      </section>
+      <section className="panel document-browser">
+        <div className="panel__header">
+          <h3>文档浏览</h3>
+          <span>{selectedPath ? "已选中 1 篇" : "等待选择"}</span>
+        </div>
         <div className="list-panel">
           {documents.length ? (
             documents.map((document) => (
