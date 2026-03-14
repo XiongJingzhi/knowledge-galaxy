@@ -1007,8 +1007,21 @@ pre {
   grid-template-columns: minmax(300px, 0.8fr) minmax(300px, 0.86fr) minmax(420px, 1.34fr);
 }
 
+.create-workbench {
+  grid-template-columns: minmax(260px, 0.72fr) minmax(340px, 0.92fr) minmax(420px, 1.18fr);
+}
+
+.asset-workbench {
+  grid-template-columns: minmax(380px, 0.98fr) minmax(340px, 0.82fr);
+}
+
 .document-command,
-.document-browser {
+.document-browser,
+.create-recipe-panel,
+.create-form-panel,
+.draft-panel,
+.asset-index-panel,
+.asset-import-panel {
   align-content: start;
 }
 
@@ -1037,6 +1050,37 @@ pre {
 
 .document-browser {
   min-height: 0;
+}
+
+.create-recipe-panel,
+.asset-index-panel {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(59, 130, 246, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 50%),
+    rgba(10, 15, 22, 0.84);
+}
+
+.create-form-panel,
+.asset-import-panel,
+.draft-panel {
+  background:
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 54%),
+    rgba(10, 15, 22, 0.84);
+}
+
+.create-recipe-panel .recipe-rail,
+.asset-index-panel .panel,
+.asset-index-panel .asset-table {
+  gap: 14px;
+}
+
+.draft-panel .field--editor {
+  gap: 10px;
+}
+
+.draft-panel .field--editor textarea {
+  min-height: 540px;
 }
 
 .signal-rail__header,

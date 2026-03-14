@@ -25,12 +25,16 @@ export function AssetsPage({
   onImportAsset: () => void;
 }) {
   return (
-    <div className="content-grid">
-      <div className="panel-stack">
+    <div className="content-grid asset-workbench">
+      <div className="panel-stack asset-index-panel">
         <section className="panel">
           <div className="panel__header">
-            <h3>资源过滤</h3>
-            <span>按作用域查看</span>
+            <h3>资源索引台</h3>
+            <span>作用域与检索</span>
+          </div>
+          <div className="view-context view-context--compact">
+            <strong>当前资产库存</strong>
+            <span>先收敛作用域和项目范围，再查看仓库级与项目级资源的库存状态。</span>
           </div>
           <div className="form-grid">
             <label className="field">
@@ -54,10 +58,14 @@ export function AssetsPage({
         </section>
         <AssetTable assets={assets} scopeFilter={assetScope} projectFilter={assetProjectFilter} />
       </div>
-      <section className="panel panel--form">
+      <section className="panel panel--form asset-import-panel">
         <div className="panel__header">
-          <h3>导入资源</h3>
+          <h3>导入面板</h3>
           <span>仓库级或项目级</span>
+        </div>
+        <div className="create-context">
+          <strong>导入目标</strong>
+          <span>填写本地文件路径、目标文件名和项目 slug，把新的资源接入当前知识库。</span>
         </div>
         <div className="form-grid">
           <label className="field">

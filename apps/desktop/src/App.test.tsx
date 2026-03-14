@@ -195,7 +195,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "进入资源页" }));
 
-    expect(await screen.findByText("资源过滤")).toBeInTheDocument();
+    expect(await screen.findByText("资源索引台")).toBeInTheDocument();
   });
 
   it("removes duplicated repository status copy from the shell", async () => {
@@ -255,7 +255,19 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "新建 Note" }));
 
     expect(await screen.findByText("创建中心")).toBeInTheDocument();
+    expect(screen.getByText("配方台")).toBeInTheDocument();
+    expect(screen.getByText("正文起草")).toBeInTheDocument();
     expect(screen.getByDisplayValue("note")).toBeInTheDocument();
+  });
+
+  it("renders the assets page as an index and import desk", async () => {
+    render(<App />);
+
+    await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+
+    expect(await screen.findByText("资源索引台")).toBeInTheDocument();
+    expect(screen.getByText("导入面板")).toBeInTheDocument();
   });
 
   it("clears the current search and filters from the documents hero", async () => {
@@ -389,7 +401,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "创建" }));
 
-    expect(screen.getByText("模板配方台")).toBeInTheDocument();
+    expect(screen.getByText("配方台")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "切换到 note 配方" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "切换到 project 配方" })).toBeInTheDocument();
   });
