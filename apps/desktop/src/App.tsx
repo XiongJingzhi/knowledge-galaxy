@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
+  chooseAssetFile,
   chooseRepoDirectory,
   createDocument,
   getDocument,
@@ -74,6 +75,11 @@ function desktopSectionFromPath(pathname: string): NavSection {
   return "home";
 }
 
+function fileNameFromPath(path: string): string {
+  const segments = path.split(/[/\\]/);
+  return segments[segments.length - 1] ?? "";
+}
+
 function DesktopAppShell() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,6 +96,7 @@ function DesktopAppShell() {
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [createDraft] = useState<DocumentDetail>(createDocumentDraft());
   const [assets, setAssets] = useState<AssetRecord[]>([]);
+  const [selectedAssetPath, setSelectedAssetPath] = useState<string | null>(null);
   const [stats, setStats] = useState<StatsSnapshot | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [snapshot, setSnapshot] = useState<ExportSnapshot | null>(null);
@@ -182,6 +189,11 @@ function DesktopAppShell() {
       .filter((value): value is NonNullable<typeof value> => value !== null);
   }, [stats]);
 
+  const selectedAsset = useMemo(
+    () => assets.find((asset) => asset.path === selectedAssetPath) ?? null,
+    [assets, selectedAssetPath],
+  );
+
   const refreshOverview = async (repoPath?: string) => {
     try {
       const summary = await selectRepo(repoPath);
@@ -197,6 +209,15 @@ function DesktopAppShell() {
       setRecentRepos(recent);
       setDocuments(listed);
       setAssets(assetList);
+      setSelectedAssetPath((current) => {
+        if (!assetList.length) {
+          return null;
+        }
+        if (current && assetList.some((asset) => asset.path === current)) {
+          return current;
+        }
+        return assetList[0]?.path ?? null;
+      });
       setStats(statsSnapshot);
       setProjects(projectList);
       setSelectedProject((current) => {
@@ -304,9 +325,27 @@ function DesktopAppShell() {
   const handleImportAsset = async () => {
     try {
       const imported = await importAsset(assetForm);
+      setSelectedAssetPath(imported.path);
       await refreshOverview(repo?.path);
       navigate("/assets");
       recordActivity("已导入资源", imported.path, imported.scope === "project" ? imported.project : "repo");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const handleChooseAssetFile = async () => {
+    try {
+      const selected = await chooseAssetFile();
+      if (!selected) {
+        return;
+      }
+      const defaultName = fileNameFromPath(selected);
+      setAssetForm((current) => ({
+        ...current,
+        filePath: selected,
+        targetName: current.targetName.trim() ? current.targetName : defaultName,
+      }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -453,12 +492,15 @@ function DesktopAppShell() {
               element={
                 <AssetsPage
                   assets={assets}
+                  selectedAsset={selectedAsset}
                   assetForm={assetForm}
                   assetProjectFilter={assetProjectFilter}
                   assetScope={assetScope}
                   onAssetFormChange={updateAssetForm}
+                  onChooseAssetFile={() => void handleChooseAssetFile()}
                   onAssetProjectFilterChange={setAssetProjectFilter}
                   onAssetScopeChange={setAssetScope}
+                  onSelectAsset={setSelectedAssetPath}
                   onImportAsset={() => void handleImportAsset()}
                 />
               }

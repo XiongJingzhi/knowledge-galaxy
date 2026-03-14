@@ -6,6 +6,7 @@ vi.mock("./lib/api", async () => {
   const actual = await vi.importActual<typeof import("./lib/api")>("./lib/api");
   return {
     ...actual,
+    chooseAssetFile: vi.fn(),
     chooseRepoDirectory: vi.fn(),
     createDocument: vi.fn(),
     getDocument: vi.fn(),
@@ -39,6 +40,7 @@ function arrangeApi() {
     { path: "/tmp/alt-repo", isDefault: false, exists: true },
   ]);
   mockedApi.listDocuments.mockResolvedValue([]);
+  mockedApi.chooseAssetFile.mockResolvedValue(null);
   mockedApi.chooseRepoDirectory.mockResolvedValue("/tmp/chosen-repo");
   mockedApi.openRepoDirectory.mockResolvedValue(undefined);
   mockedApi.searchDocuments.mockResolvedValue([]);
@@ -272,6 +274,54 @@ describe("App", () => {
 
     expect(await screen.findByText("资源索引台")).toBeInTheDocument();
     expect(screen.getByText("导入面板")).toBeInTheDocument();
+  });
+
+  it("chooses a local asset file and fills the import form", async () => {
+    mockedApi.chooseAssetFile.mockResolvedValue("/tmp/hero-banner.png");
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "选择文件" }));
+
+    await waitFor(() => {
+      expect(mockedApi.chooseAssetFile).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByDisplayValue("/tmp/hero-banner.png")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("hero-banner.png")).toBeInTheDocument();
+  });
+
+  it("shows selected asset metadata in the details panel", async () => {
+    mockedApi.listAssets.mockResolvedValue([
+      {
+        path: "assets/logo.png",
+        scope: "repo",
+        size_bytes: 2048,
+        sha256: "b".repeat(64),
+      },
+      {
+        path: "projects/atlas/assets/hero.png",
+        scope: "project",
+        project: "atlas",
+        size_bytes: 4096,
+        sha256: "c".repeat(64),
+      },
+    ]);
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "资源" }));
+    fireEvent.click(screen.getByRole("button", { name: "projects/atlas/assets/hero.png" }));
+
+    expect(await screen.findByText("资源详情")).toBeInTheDocument();
+    expect(screen.getAllByText("projects/atlas/assets/hero.png").length).toBeGreaterThan(0);
+    expect(screen.getByText("project")).toBeInTheDocument();
+    expect(screen.getByText("atlas")).toBeInTheDocument();
+    expect(screen.getByText("4096 bytes")).toBeInTheDocument();
+    expect(screen.getAllByText("c".repeat(64)).length).toBeGreaterThan(0);
   });
 
   it("clears the current search and filters from the documents index toolbar", async () => {
@@ -557,6 +607,18 @@ describe("App", () => {
   });
 
   it("imports an asset with project and target name from the asset workbench", async () => {
+    mockedApi.chooseAssetFile.mockResolvedValue("/tmp/hero.png");
+    mockedApi.listAssets
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          path: "projects/atlas/assets/hero.png",
+          scope: "project",
+          project: "atlas",
+          size_bytes: 128,
+          sha256: "a".repeat(64),
+        },
+      ]);
     mockedApi.importAsset.mockResolvedValue({
       path: "projects/atlas/assets/hero.png",
       scope: "project",
@@ -570,11 +632,10 @@ describe("App", () => {
     await screen.findByText("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "资源" }));
-    fireEvent.change(screen.getByLabelText("本地文件路径"), {
-      target: { value: "/tmp/hero.png" },
-    });
-    fireEvent.change(screen.getByLabelText("目标文件名"), {
-      target: { value: "hero.png" },
+    fireEvent.click(screen.getByRole("button", { name: "选择文件" }));
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("/tmp/hero.png")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("hero.png")).toBeInTheDocument();
     });
     fireEvent.change(screen.getByLabelText("导入到项目 slug"), {
       target: { value: "atlas" },
@@ -591,6 +652,8 @@ describe("App", () => {
     });
 
     expect(mockedApi.importAsset).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("资源详情")).toBeInTheDocument();
+    expect(screen.getAllByText("projects/atlas/assets/hero.png").length).toBeGreaterThan(0);
   });
 
   it("renders validation errors after running validate", async () => {

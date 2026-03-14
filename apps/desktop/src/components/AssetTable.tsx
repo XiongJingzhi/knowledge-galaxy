@@ -4,10 +4,14 @@ export function AssetTable({
   assets,
   scopeFilter = "all",
   projectFilter = "",
+  selectedPath = null,
+  onSelectAsset,
 }: {
   assets: AssetRecord[];
   scopeFilter?: "all" | "repo" | "project";
   projectFilter?: string;
+  selectedPath?: string | null;
+  onSelectAsset?: (path: string) => void;
 }) {
   const visibleAssets = assets.filter((asset) => {
     if (scopeFilter !== "all" && asset.scope !== scopeFilter) {
@@ -28,7 +32,13 @@ export function AssetTable({
       <div className="asset-table">
         {visibleAssets.length ? (
           visibleAssets.map((asset) => (
-            <article key={asset.path} className="asset-row">
+            <button
+              aria-label={asset.path}
+              key={asset.path}
+              className={asset.path === selectedPath ? "asset-row is-active" : "asset-row"}
+              type="button"
+              onClick={() => onSelectAsset?.(asset.path)}
+            >
               <div>
                 <strong>{asset.path}</strong>
                 <p>
@@ -37,7 +47,7 @@ export function AssetTable({
                 </p>
               </div>
               <code>{asset.sha256}</code>
-            </article>
+            </button>
           ))
         ) : (
           <article className="empty-state empty-state--compact">

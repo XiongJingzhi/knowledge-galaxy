@@ -76,7 +76,7 @@ README.md
 - 文档创建与编辑进入独立二级工作区，采用左侧 Markdown 编辑、右侧预览
 - 侧栏加入桌面端专用的星系 logo，延续深色结构网格与轨道视觉语言
 - 文档页支持浏览、过滤、搜索、信号条聚焦，以及进入二级编辑工作区
-- 资源页支持 `asset-list` 浏览、按仓库级 / 项目级切换以及资源导入
+- 资源页支持 `asset-list` 浏览、按仓库级 / 项目级切换、系统文件选择导入，以及查看资源详情元数据
 - 校验导出页支持 `validate`、`document-list`、`manifest`、`change-list`、`asset-list`
 - 项目页支持 `add-remote`、`fetch`、`push`、`sync`
 

@@ -1066,7 +1066,7 @@ pre {
 }
 
 .asset-workbench {
-  grid-template-columns: minmax(380px, 0.98fr) minmax(340px, 0.82fr);
+  grid-template-columns: minmax(420px, 1fr) minmax(360px, 0.9fr);
 }
 
 .document-command,
@@ -1126,6 +1126,10 @@ pre {
 .create-recipe-panel .recipe-rail,
 .asset-index-panel .panel,
 .asset-index-panel .asset-table {
+  gap: 14px;
+}
+
+.asset-import-panel {
   gap: 14px;
 }
 
@@ -1487,6 +1491,14 @@ pre {
     rgba(19, 14, 10, 0.92);
 }
 
+.asset-row.is-active {
+  border-color: rgba(56, 189, 248, 0.32);
+  background:
+    linear-gradient(180deg, rgba(56, 189, 248, 0.12), transparent 80%),
+    rgba(11, 19, 28, 0.92);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.28);
+}
+
 .list-row.static {
   cursor: default;
 }
@@ -1512,6 +1524,28 @@ pre {
 .empty-state h4,
 .detail-panel.empty h3 {
   font-size: 1.5rem;
+}
+
+.asset-file-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.asset-file-picker input {
+  min-width: 0;
+}
+
+.asset-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.asset-detail-grid code,
+.asset-detail-grid strong {
+  display: block;
+  margin: 0;
+  word-break: break-word;
 }
 
 .empty-state--compact h4 {
