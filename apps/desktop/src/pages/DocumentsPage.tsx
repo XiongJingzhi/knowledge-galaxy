@@ -1,16 +1,14 @@
 import type { DocumentFilters, DocumentListItem } from "../lib/types";
-import type { DocumentSignal } from "../lib/desktop-ui";
 import { DocumentFilters as FiltersPanel } from "../components/DocumentFilters";
+import { useState } from "react";
 
 export function DocumentsPage({
   documents,
   filters,
   query,
   viewLabel,
-  documentSignals,
   onQueryChange,
   onFiltersChange,
-  onApplySignal,
   onOpenCreate,
   onOpenDocument,
   onResetView,
@@ -19,14 +17,14 @@ export function DocumentsPage({
   filters: DocumentFilters;
   query: string;
   viewLabel: string;
-  documentSignals: DocumentSignal[];
   onQueryChange: (value: string) => void;
   onFiltersChange: (value: DocumentFilters) => void;
-  onApplySignal: (filterKey: keyof DocumentFilters, value: string) => void;
   onOpenCreate: () => void;
   onOpenDocument: (path: string) => void;
   onResetView: () => void;
 }) {
+  const [showFilters, setShowFilters] = useState(false);
+
   return (
     <div className="content-grid document-shell">
       <section className="panel document-index">
@@ -38,49 +36,42 @@ export function DocumentsPage({
           <span>{documents.length} 条</span>
         </div>
         <div className="view-context view-context--compact document-index__toolbar">
-          <strong>{viewLabel}</strong>
-          <div className="document-index__actions">
-            <button className="ghost-button" type="button" onClick={onResetView}>
-              重置筛选
-            </button>
-            <button className="primary-button" type="button" onClick={onOpenCreate}>
-              新建文档
-            </button>
+          <div className="document-index__summary">
+            <strong>{viewLabel}</strong>
+          </div>
+          <div className="document-index__searchbar">
+            <label className="field document-index__search">
+              <span>搜索</span>
+              <input value={query} onChange={(event) => onQueryChange(event.currentTarget.value)} />
+            </label>
+            <div className="document-index__actions">
+              <button
+                aria-expanded={showFilters}
+                aria-label="筛选文档"
+                className="ghost-button icon-button"
+                type="button"
+                onClick={() => setShowFilters((current) => !current)}
+              >
+                <span aria-hidden="true">⌕</span>
+              </button>
+              <button className="ghost-button" type="button" onClick={onResetView}>
+                重置筛选
+              </button>
+              <button className="primary-button" type="button" onClick={onOpenCreate}>
+                新建文档
+              </button>
+            </div>
           </div>
         </div>
-        <label className="field field--wide document-index__search">
-          <span>搜索</span>
-          <input value={query} onChange={(event) => onQueryChange(event.currentTarget.value)} />
-        </label>
-        <section className="document-filters-panel" aria-label="逻辑分类">
-          <div className="panel__header signal-rail__header">
-            <h3>逻辑分类</h3>
-            <span>按类型、状态、项目和主题收敛检索结果</span>
-          </div>
-          <FiltersPanel filters={filters} onChange={onFiltersChange} />
-        </section>
-        {documentSignals.length ? (
-          <section className="signal-rail" aria-label="文档信号条">
-            <div className="panel__header signal-rail__header">
-              <h3>逻辑分类</h3>
-              <span>从统计摘要一键聚焦常用分类</span>
+        {showFilters ? (
+          <section className="document-filter-popover panel" aria-label="筛选条件">
+            <div className="panel__header">
+              <h3>筛选条件</h3>
+              <button className="ghost-button" type="button" onClick={() => setShowFilters(false)}>
+                关闭
+              </button>
             </div>
-            <div className="signal-rail__grid">
-              {documentSignals.map((signal) => (
-                <article key={`${signal.group}-${signal.key}`} className="signal-card">
-                  <span className="signal-card__group">{signal.title}</span>
-                  <strong className="signal-card__key">{signal.key}</strong>
-                  <span className="signal-card__count">{signal.count} 篇</span>
-                  <button
-                    className="ghost-button signal-card__action"
-                    type="button"
-                    onClick={() => onApplySignal(signal.filterKey, signal.key)}
-                  >
-                    {signal.actionLabel} {signal.key}
-                  </button>
-                </article>
-              ))}
-            </div>
+            <FiltersPanel filters={filters} onChange={onFiltersChange} />
           </section>
         ) : null}
         <section className="panel document-browser">

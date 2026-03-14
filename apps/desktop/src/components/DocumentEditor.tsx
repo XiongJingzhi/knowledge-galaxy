@@ -14,6 +14,23 @@ function splitList(value: string) {
     .filter(Boolean);
 }
 
+function prettyTimestamp(value: string) {
+  if (!value) {
+    return "自动生成";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function DocumentEditor({
   document,
   mode = "edit",
@@ -50,6 +67,8 @@ export function DocumentEditor({
     setDirty(true);
   };
   const dossierGroups = [
+    { label: "类型", values: [draft.type] },
+    { label: "状态", values: [draft.status] },
     { label: "主题", values: draft.theme },
     { label: "项目", values: draft.project },
     { label: "标签", values: draft.tags },
@@ -85,97 +104,15 @@ export function DocumentEditor({
       <div className="detail-panel__workspace">
         <div className="document-editor-grid">
           <section className="editor-column">
-            <div className="detail-panel__meta detail-panel__meta--compact detail-panel__meta--dense">
-              <label className="field">
-                <span>类型</span>
-                <select
-                  aria-label="类型"
-                  value={draft.type}
-                  onChange={(event) => patch({ type: event.currentTarget.value })}
-                >
-                  <option value="note">note</option>
-                  <option value="daily">daily</option>
-                  <option value="decision">decision</option>
-                  <option value="review">review</option>
-                  <option value="project">project</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>标题</span>
-                <input
-                  aria-label="标题"
-                  value={draft.title}
-                  onChange={(event) => patch({ title: event.currentTarget.value })}
-                />
-              </label>
-              <label className="field">
-                <span>状态</span>
-                <input
-                  aria-label="状态"
-                  value={draft.status}
-                  onChange={(event) => patch({ status: event.currentTarget.value })}
-                />
-              </label>
-              <label className="field">
-                <span>日期</span>
-                <input
-                  aria-label="日期"
-                  value={draft.date}
-                  onChange={(event) => patch({ date: event.currentTarget.value })}
-                />
-              </label>
-              <label className="field">
-                <span>主题</span>
-                <input
-                  aria-label="主题"
-                  value={joinList(draft.theme)}
-                  onChange={(event) => patch({ theme: splitList(event.currentTarget.value) })}
-                />
-              </label>
-              <label className="field">
-                <span>项目</span>
-                <input
-                  aria-label="项目"
-                  value={joinList(draft.project)}
-                  onChange={(event) => patch({ project: splitList(event.currentTarget.value) })}
-                />
-              </label>
-              <label className="field">
-                <span>标签</span>
-                <input
-                  aria-label="标签"
-                  value={joinList(draft.tags)}
-                  onChange={(event) => patch({ tags: splitList(event.currentTarget.value) })}
-                />
-              </label>
-              <label className="field">
-                <span>来源</span>
-                <input
-                  aria-label="来源"
-                  value={joinList(draft.source)}
-                  onChange={(event) => patch({ source: splitList(event.currentTarget.value) })}
-                />
-              </label>
-              <label className="field field--wide">
-                <span>摘要</span>
-                <input
-                  aria-label="摘要"
-                  value={draft.summary}
-                  onChange={(event) => patch({ summary: event.currentTarget.value })}
-                />
-              </label>
-              {draft.type === "project" ? (
-                <label className="field field--wide">
-                  <span>Git Worktree</span>
-                  <input
-                    aria-label="Git Worktree"
-                    value={draft.gitWorktree ?? ""}
-                    onChange={(event) => patch({ gitWorktree: event.currentTarget.value })}
-                  />
-                </label>
-              ) : null}
-            </div>
-            <label className="field">
+            <label className="field field--wide">
+              <span>标题</span>
+              <input
+                aria-label="标题"
+                value={draft.title}
+                onChange={(event) => patch({ title: event.currentTarget.value })}
+              />
+            </label>
+            <label className="field field--editor">
               <span>Markdown 编辑</span>
               <textarea
                 aria-label="Markdown 正文"
@@ -191,6 +128,100 @@ export function DocumentEditor({
             </div>
             <article className="markdown-preview">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{draft.body || "*没有正文内容*"}</ReactMarkdown>
+              <section className="document-meta-panel">
+                <div className="detail-panel__meta detail-panel__meta--dense document-meta-panel__timestamps">
+                  <article className="meta-readout">
+                    <span>创建时间</span>
+                    <strong>{prettyTimestamp(draft.createdAt)}</strong>
+                  </article>
+                  <article className="meta-readout">
+                    <span>更新时间</span>
+                    <strong>{prettyTimestamp(draft.updatedAt)}</strong>
+                  </article>
+                  <article className="meta-readout">
+                    <span>文档日期</span>
+                    <strong>{draft.date || "自动生成"}</strong>
+                  </article>
+                  <article className="meta-readout">
+                    <span>路径</span>
+                    <strong>{draft.path || "创建后生成"}</strong>
+                  </article>
+                </div>
+                <div className="detail-panel__meta detail-panel__meta--compact detail-panel__meta--dense">
+                  <label className="field">
+                    <span>类型</span>
+                    <select
+                      aria-label="类型"
+                      value={draft.type}
+                      onChange={(event) => patch({ type: event.currentTarget.value })}
+                    >
+                      <option value="note">note</option>
+                      <option value="daily">daily</option>
+                      <option value="decision">decision</option>
+                      <option value="review">review</option>
+                      <option value="project">project</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>状态</span>
+                    <input
+                      aria-label="状态"
+                      value={draft.status}
+                      onChange={(event) => patch({ status: event.currentTarget.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>主题</span>
+                    <input
+                      aria-label="主题"
+                      value={joinList(draft.theme)}
+                      onChange={(event) => patch({ theme: splitList(event.currentTarget.value) })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>项目</span>
+                    <input
+                      aria-label="项目"
+                      value={joinList(draft.project)}
+                      onChange={(event) => patch({ project: splitList(event.currentTarget.value) })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>标签</span>
+                    <input
+                      aria-label="标签"
+                      value={joinList(draft.tags)}
+                      onChange={(event) => patch({ tags: splitList(event.currentTarget.value) })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>来源</span>
+                    <input
+                      aria-label="来源"
+                      value={joinList(draft.source)}
+                      onChange={(event) => patch({ source: splitList(event.currentTarget.value) })}
+                    />
+                  </label>
+                  <label className="field field--wide">
+                    <span>摘要</span>
+                    <input
+                      aria-label="摘要"
+                      value={draft.summary}
+                      onChange={(event) => patch({ summary: event.currentTarget.value })}
+                    />
+                  </label>
+                  {draft.type === "project" ? (
+                    <label className="field field--wide">
+                      <span>Git Worktree</span>
+                      <input
+                        aria-label="Git Worktree"
+                        value={draft.gitWorktree ?? ""}
+                        onChange={(event) => patch({ gitWorktree: event.currentTarget.value })}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              </section>
               <div className="markdown-preview__meta">
                 {dossierGroups.map((group) => (
                   <article key={group.label} className="taxonomy-strip__group">

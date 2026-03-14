@@ -58,10 +58,13 @@ describe("DocumentEditor", () => {
 
     expect(screen.getByText("Markdown 编辑")).toBeInTheDocument();
     expect(screen.getByText("实时预览")).toBeInTheDocument();
-    expect(screen.getByText("note")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Idea")).toBeInTheDocument();
+    expect(screen.getByText("创建时间")).toBeInTheDocument();
+    expect(screen.getByText("更新时间")).toBeInTheDocument();
+    expect(screen.getByText("文档日期")).toBeInTheDocument();
     expect(screen.getByText("knowledge")).toBeInTheDocument();
     expect(screen.getByText("atlas")).toBeInTheDocument();
+    expect(screen.queryByLabelText("日期")).not.toBeInTheDocument();
   });
 
   it("copies the document path from the dossier strip", async () => {

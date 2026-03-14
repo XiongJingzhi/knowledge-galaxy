@@ -59,6 +59,23 @@ function createDocumentDraft(seed: Partial<DocumentDetail> = {}): DocumentDetail
   return { ...defaultDetail, ...seed };
 }
 
+function currentIsoTimestamp() {
+  return new Date().toISOString();
+}
+
+function currentDateStamp() {
+  return currentIsoTimestamp().slice(0, 10);
+}
+
+function buildCreateDraft() {
+  const now = currentIsoTimestamp();
+  return createDocumentDraft({
+    createdAt: now,
+    updatedAt: now,
+    date: currentDateStamp(),
+  });
+}
+
 function desktopSectionFromPath(pathname: string): NavSection {
   if (pathname.startsWith("/documents")) {
     return "documents";
@@ -94,7 +111,7 @@ function DesktopAppShell() {
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
-  const [createDraft] = useState<DocumentDetail>(createDocumentDraft());
+  const [createDraft, setCreateDraft] = useState<DocumentDetail>(() => buildCreateDraft());
   const [assets, setAssets] = useState<AssetRecord[]>([]);
   const [selectedAssetPath, setSelectedAssetPath] = useState<string | null>(null);
   const [stats, setStats] = useState<StatsSnapshot | null>(null);
@@ -168,26 +185,6 @@ function DesktopAppShell() {
     }
     return cards;
   }, [assets.length, recentRepos.length, stats]);
-
-  const documentSignals = useMemo(() => {
-    if (!stats) {
-      return [];
-    }
-    const candidates = [
-      { group: "type", title: "类型", actionLabel: "按类型浏览", filterKey: "type" as const },
-      { group: "status", title: "状态", actionLabel: "聚焦状态", filterKey: "status" as const },
-      { group: "theme", title: "主题", actionLabel: "查看主题", filterKey: "theme" as const },
-    ];
-    return candidates
-      .map((candidate) => {
-        const item = stats.groups[candidate.group]?.[0];
-        if (!item) {
-          return null;
-        }
-        return { ...candidate, key: item.key, count: item.count };
-      })
-      .filter((value): value is NonNullable<typeof value> => value !== null);
-  }, [stats]);
 
   const selectedAsset = useMemo(
     () => assets.find((asset) => asset.path === selectedAssetPath) ?? null,
@@ -389,11 +386,6 @@ function DesktopAppShell() {
     }
   };
 
-  const applyDocumentSignal = (filterKey: keyof DocumentFilters, value: string) => {
-    setQuery("");
-    setFilters((current) => ({ ...current, [filterKey]: value }));
-  };
-
   const submitHomeSearch = () => {
     setFilters({});
     setQuery(globalSearch.trim());
@@ -452,11 +444,12 @@ function DesktopAppShell() {
                   filters={filters}
                   query={query}
                   viewLabel={viewLabel}
-                  documentSignals={documentSignals}
                   onQueryChange={setQuery}
                   onFiltersChange={setFilters}
-                  onApplySignal={applyDocumentSignal}
-                  onOpenCreate={() => navigate("/documents/new")}
+                  onOpenCreate={() => {
+                    setCreateDraft(buildCreateDraft());
+                    navigate("/documents/new");
+                  }}
                   onOpenDocument={(path) => navigate(`/documents/edit?path=${encodeURIComponent(path)}`)}
                   onResetView={() => {
                     setQuery("");

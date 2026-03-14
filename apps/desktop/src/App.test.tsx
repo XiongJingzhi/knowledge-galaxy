@@ -243,7 +243,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     expect(await screen.findByText("文档索引")).toBeInTheDocument();
-    expect(screen.getAllByText("逻辑分类").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "筛选文档" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "标题" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "新建文档" })).toBeInTheDocument();
     expect(
@@ -329,6 +329,8 @@ describe("App", () => {
 
     await screen.findByText("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
+    fireEvent.click(screen.getByRole("button", { name: "筛选文档" }));
+    await screen.findByText("筛选条件");
 
     fireEvent.change(screen.getByLabelText("搜索"), {
       target: { value: "search phrase" },
@@ -354,28 +356,24 @@ describe("App", () => {
     await screen.findByText("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
-    expect(screen.getAllByText("逻辑分类").length).toBeGreaterThan(0);
-    expect(screen.getByText("active")).toBeInTheDocument();
-    expect(screen.getByText("8 篇")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "聚焦状态 active" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "筛选文档" })).toBeInTheDocument();
+    expect(screen.queryByText("从统计摘要一键聚焦常用分类。")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "聚焦状态 active" })).not.toBeInTheDocument();
   });
 
-  it("applies a status focus from the document signal rail and clears the current query", async () => {
+  it("opens filter controls from the filter trigger and applies a status filter", async () => {
     render(<App />);
 
     await screen.findByText("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
-    fireEvent.change(screen.getByLabelText("搜索"), {
-      target: { value: "search phrase" },
+    fireEvent.click(screen.getByRole("button", { name: "筛选文档" }));
+    expect(await screen.findByText("筛选条件")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("状态"), {
+      target: { value: "active" },
     });
 
-    await screen.findByText("当前视图 · 搜索 “search phrase”");
-
-    fireEvent.click(screen.getByRole("button", { name: "聚焦状态 active" }));
-
     await waitFor(() => {
-      expect(screen.getByLabelText("搜索")).toHaveValue("");
       expect(screen.getByLabelText("状态")).toHaveValue("active");
     });
     expect(screen.getByText("当前视图 · status: active")).toBeInTheDocument();
@@ -437,14 +435,14 @@ describe("App", () => {
     await waitFor(() => {
       expect(mockedApi.createDocument).toHaveBeenCalledWith("note", {
         title: "Ship Note",
-        date: "",
+        date: new Date().toISOString().slice(0, 10),
         gitWorktree: "",
         body: "Captured from desktop.",
       });
     });
 
     expect(await screen.findByRole("heading", { name: "编辑文档" })).toBeInTheDocument();
-    expect(await screen.findByText("notes/ship-note.md")).toBeInTheDocument();
+    expect((await screen.findAllByText("notes/ship-note.md")).length).toBeGreaterThan(0);
   });
 
   it("renders a two-column editor and preview layout on the routed creation page", async () => {
@@ -459,6 +457,8 @@ describe("App", () => {
     expect(screen.getAllByText("Markdown 编辑").length).toBeGreaterThan(0);
     expect(screen.getByText("实时预览")).toBeInTheDocument();
     expect(screen.getByLabelText("Markdown 正文")).toBeInTheDocument();
+    expect(screen.getByText("创建时间")).toBeInTheDocument();
+    expect(screen.queryByLabelText("日期")).not.toBeInTheDocument();
   });
 
   it("renders export content after running an export action", async () => {
@@ -593,6 +593,8 @@ describe("App", () => {
 
     await screen.findByText("/tmp/default-repo");
     fireEvent.click(screen.getByRole("button", { name: "文档" }));
+    fireEvent.click(screen.getByRole("button", { name: "筛选文档" }));
+    await screen.findByText("筛选条件");
 
     fireEvent.change(screen.getByLabelText("状态"), {
       target: { value: "active" },

@@ -13,7 +13,7 @@ export function DocumentCreatePage({
   onSave: (value: DocumentDetail) => Promise<void>;
 }) {
   const title = mode === "create" ? "新建文档" : "编辑文档";
-  const description = mode === "create" ? "左侧写 Markdown，右侧实时查看预览。" : "在独立工作区里继续修改 Markdown 和结构字段。";
+  const description = mode === "create" ? "直接开始写 Markdown，结构信息放到右侧辅助区。" : "继续修改正文，次要字段和时间信息放在辅助区。";
   const actionLabel = mode === "create" ? "创建文档" : "保存文档";
 
   return (
