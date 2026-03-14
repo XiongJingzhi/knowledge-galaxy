@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  chooseRepoDirectory,
   createDocument,
   getDocument,
   getRecentRepos,
@@ -26,8 +27,7 @@ import {
 import type { AssetRecord, DocumentDetail, DocumentFilters, DocumentListItem, NavSection } from "./lib/types";
 import { Sidebar } from "./components/Sidebar";
 import { ActivityFeed } from "./components/ActivityFeed";
-import { DesktopMasthead, OverviewStrip } from "./components/DesktopMasthead";
-import { RepoSwitcher } from "./components/RepoSwitcher";
+import { OverviewStrip } from "./components/DesktopMasthead";
 import { SectionHero } from "./components/SectionHero";
 import { AssetsPage } from "./pages/AssetsPage";
 import { CreatePage } from "./pages/CreatePage";
@@ -35,8 +35,7 @@ import { DocumentsPage } from "./pages/DocumentsPage";
 import { HomePage } from "./pages/HomePage";
 import { OpsPage } from "./pages/OpsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
-import type { ActivityItem, CreateRecipe, HomeEntryCard, OverviewCard, SectionHeroData } from "./lib/desktop-ui";
-import { sectionDeskCopy } from "./lib/desktop-ui";
+import type { ActivityItem, CreateRecipe, OverviewCard } from "./lib/desktop-ui";
 
 const defaultDetail: DocumentDetail = {
   path: "",
@@ -89,44 +88,6 @@ const createRecipes = [
     hint: "当前配方需要标题与 Git Worktree，用于把知识库项目条目接到真实代码目录。",
   },
 ] as const satisfies readonly CreateRecipe[];
-
-const homeEntryCards: HomeEntryCard[] = [
-  {
-    section: "documents",
-    eyebrow: "DOCS",
-    title: "文档总览",
-    description: "进入检索、筛选、阅读和编辑工作台。",
-    actionLabel: "进入文档页",
-  },
-  {
-    section: "create",
-    eyebrow: "CREATE",
-    title: "快速创建",
-    description: "按配方生成 note、daily、decision、review、project。",
-    actionLabel: "进入创建页",
-  },
-  {
-    section: "assets",
-    eyebrow: "ASSET",
-    title: "资源台账",
-    description: "按作用域查看资产，并继续导入文件。",
-    actionLabel: "进入资源页",
-  },
-  {
-    section: "ops",
-    eyebrow: "OPS",
-    title: "校验与导出",
-    description: "集中校验仓库并生成导出快照。",
-    actionLabel: "进入校验页",
-  },
-  {
-    section: "projects",
-    eyebrow: "PROJECT",
-    title: "项目桥",
-    description: "把知识项目和真实代码仓库重新对齐。",
-    actionLabel: "进入项目页",
-  },
-];
 
 export function App() {
   const [section, setSection] = useState<NavSection>("home");
@@ -241,18 +202,6 @@ export function App() {
 
   const activeCreateRecipe =
     createRecipes.find((recipe) => recipe.type === createForm.type) ?? createRecipes[0];
-  const deskSection = sectionDeskCopy[section];
-
-  const desktopMetrics = useMemo(
-    () => [
-      { label: "文档总数", value: String(stats?.total ?? 0) },
-      { label: "资源总数", value: String(assets.length) },
-      { label: "项目数", value: String(projects.length) },
-      { label: "最近操作", value: String(activityItems.length) },
-    ],
-    [activityItems.length, assets.length, projects.length, stats?.total],
-  );
-
   const refreshOverview = async (repoPath?: string) => {
     try {
       const summary = await selectRepo(repoPath);
@@ -289,6 +238,19 @@ export function App() {
       if (targetRepo) {
         recordActivity("已打开仓库目录", targetRepo, "通过系统文件管理器");
       }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const handleChooseRepoDirectory = async () => {
+    try {
+      const selected = await chooseRepoDirectory();
+      if (!selected) {
+        return;
+      }
+      await refreshOverview(selected);
+      recordActivity("已切换仓库", selected, "通过系统目录选择器");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -403,10 +365,6 @@ export function App() {
     setFilters((current) => ({ ...current, [filterKey]: value }));
   };
 
-  const openSection = (nextSection: Exclude<NavSection, "home">) => {
-    setSection(nextSection);
-  };
-
   const submitHomeSearch = () => {
     setFilters({});
     setQuery(globalSearch.trim());
@@ -488,11 +446,9 @@ export function App() {
           <HomePage
             globalSearch={globalSearch}
             overviewCards={overviewCards}
-            entryCards={homeEntryCards}
             activityItems={activityItems}
             onGlobalSearchChange={setGlobalSearch}
             onGlobalSearchSubmit={submitHomeSearch}
-            onOpenSection={openSection}
           />
         );
       case "documents":
@@ -567,22 +523,15 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar section={section} onChange={setSection} />
+      <Sidebar
+        section={section}
+        repoPath={repo?.path ?? repoPathInput}
+        onChooseRepoDirectory={() => void handleChooseRepoDirectory()}
+        onOpenRepoDirectory={() => void handleOpenRepoDirectory()}
+        onChange={setSection}
+      />
       <main className="workspace">
-        <RepoSwitcher
-          repoPathInput={repoPathInput}
-          recentRepos={recentRepos}
-          onRepoPathInputChange={setRepoPathInput}
-          onOpenRepoDirectory={() => void handleOpenRepoDirectory()}
-          onRefreshOverview={(repoPath) => void refreshOverview(repoPath)}
-        />
         {error ? <div className="error-banner">{error}</div> : null}
-        <DesktopMasthead
-          section={section}
-          sectionTitle={deskSection.title}
-          sectionDescription={deskSection.description}
-          metrics={desktopMetrics}
-        />
         <div className={section === "home" ? "workspace__content workspace__content--home" : "workspace__content"}>
           {section === "home" ? (
             pageContent
