@@ -408,6 +408,7 @@ describe("App", () => {
         title: "Imported Review",
         type: "review",
         status: "inbox",
+        updatedAt: "2026-03-14T09:30:00Z",
       },
     ]);
 
@@ -861,6 +862,7 @@ describe("App", () => {
         title: "Idea",
         type: "note",
         status: "active",
+        updatedAt: "2026-03-13T00:00:00Z",
       },
     ]);
     mockedApi.saveDocument.mockResolvedValue({
@@ -901,6 +903,7 @@ describe("App", () => {
         title: "Search Hit",
         type: "note",
         status: "active",
+        updatedAt: "2026-03-14T08:45:00Z",
       },
     ]);
 
@@ -938,6 +941,27 @@ describe("App", () => {
       );
     });
     expect(screen.getByText("当前视图 · status: active")).toBeInTheDocument();
+  });
+
+  it("renders real updated timestamps in the document index instead of placeholder copy", async () => {
+    mockedApi.listDocuments.mockResolvedValue([
+      {
+        path: "notes/idea.md",
+        title: "Idea",
+        type: "note",
+        status: "active",
+        updatedAt: "2026-03-14T08:45:00Z",
+      },
+    ]);
+
+    render(<App />);
+
+    await screen.findByText("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
+    await screen.findByText("Idea");
+
+    expect(screen.queryByText("最近更新")).not.toBeInTheDocument();
+    expect(screen.getByText(/2026\/03\/14/)).toBeInTheDocument();
   });
 
   it("imports an asset with project and target name from the asset workbench", async () => {

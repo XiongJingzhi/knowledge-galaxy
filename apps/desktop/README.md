@@ -13,8 +13,8 @@
 桌面端当前采用“首页总览 + 文档中心 + 二级工作区”的信息架构：
 
 - 首页：一屏承载全局搜索、概览卡和最近动态
-- 文档页：表格化索引、搜索，以及通过筛选弹层按 `type/status/project/date/theme/tag/source` 过滤
-- 文档工作区：创建或编辑文档时进入独立页面，左侧 Markdown 编辑，右侧实时预览，`createdAt/updatedAt/date` 自动生成并作为只读信息展示
+- 文档页：表格化索引、搜索，以及通过筛选弹层按 `type/status/project/date/theme/tag/source` 过滤，并显示真实更新时间
+- 文档工作区：创建或编辑文档时进入独立页面，左侧 Markdown 编辑，右侧实时预览，`createdAt/updatedAt/date` 自动生成并作为只读信息展示；主滚动仅发生在内容区，桌面壳层保持稳定
 - 资源页：查看 `asset-list`，按仓库级 / 项目级切换浏览，使用系统文件选择器导入资源，并支持把本地 `md/zip` 通过 `Ollama` 迁入知识星系，同时查看当前选中资源的路径、作用域、项目、大小和 `sha256`
 - 校验与导出页：`validate`、`document-list`、`manifest`、`change-list`、`asset-list`
 - 项目页：`add-remote`、`fetch`、`push`、`sync`

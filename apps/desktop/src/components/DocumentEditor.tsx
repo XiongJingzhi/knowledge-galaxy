@@ -85,9 +85,9 @@ export function DocumentEditor({
   return (
     <section className="panel detail-panel detail-panel--workspace">
       <div className="detail-panel__header">
-        <div>
+        <div className="document-editor__headline">
           <span className="eyebrow">{mode === "create" ? "Markdown 编辑" : draft.path}</span>
-          <h2>{draft.title || (mode === "create" ? "未命名文档" : "文档编辑")}</h2>
+          <h2 data-testid="document-editor-title">{draft.title || (mode === "create" ? "未命名文档" : "文档编辑")}</h2>
         </div>
         <div className="detail-panel__status">
           {dirty ? <span className="status-pill is-dirty">未保存变更</span> : null}
@@ -101,7 +101,7 @@ export function DocumentEditor({
           </button>
         </div>
       </div>
-      <div className="detail-panel__workspace">
+      <div className="detail-panel__workspace" data-testid="document-workspace-content">
         <div className="document-editor-grid">
           <section className="editor-column">
             <label className="field field--wide">

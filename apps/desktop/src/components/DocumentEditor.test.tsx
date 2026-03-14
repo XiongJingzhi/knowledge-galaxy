@@ -59,6 +59,8 @@ describe("DocumentEditor", () => {
     expect(screen.getByText("Markdown 编辑")).toBeInTheDocument();
     expect(screen.getByText("实时预览")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Idea")).toBeInTheDocument();
+    expect(screen.getByTestId("document-editor-title")).toHaveTextContent("Idea");
+    expect(screen.getByTestId("document-workspace-content")).toBeInTheDocument();
     expect(screen.getByText("创建时间")).toBeInTheDocument();
     expect(screen.getByText("更新时间")).toBeInTheDocument();
     expect(screen.getByText("文档日期")).toBeInTheDocument();

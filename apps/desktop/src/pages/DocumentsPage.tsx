@@ -2,6 +2,24 @@ import type { DocumentFilters, DocumentListItem } from "../lib/types";
 import { DocumentFilters as FiltersPanel } from "../components/DocumentFilters";
 import { useState } from "react";
 
+function formatDocumentTimestamp(value: string) {
+  if (!value) {
+    return "待同步";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 export function DocumentsPage({
   documents,
   filters,
@@ -105,7 +123,7 @@ export function DocumentsPage({
                       </td>
                       <td>{document.type}</td>
                       <td>{document.status}</td>
-                      <td>最近更新</td>
+                      <td>{formatDocumentTimestamp(document.updatedAt)}</td>
                       <td>
                         <code>{document.path}</code>
                       </td>

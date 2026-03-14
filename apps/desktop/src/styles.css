@@ -83,7 +83,8 @@ pre {
 .app-shell {
   display: grid;
   grid-template-columns: 300px 1fr;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -316,6 +317,8 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .workspace::before {
@@ -688,6 +691,13 @@ pre {
   gap: 18px;
 }
 
+.workspace__content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
 .overview-strip {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
@@ -895,6 +905,17 @@ pre {
 .panel__header span,
 .detail-panel__header span {
   color: var(--muted);
+}
+
+.document-editor__headline {
+  display: grid;
+  gap: 8px;
+}
+
+.document-editor__headline h2 {
+  font-size: clamp(1.65rem, 2.2vw, 2.15rem);
+  letter-spacing: -0.03em;
+  line-height: 1.08;
 }
 
 .activity-item {
@@ -1852,6 +1873,7 @@ pre {
 .document-workspace-page {
   display: grid;
   gap: 18px;
+  min-height: 100%;
 }
 
 .document-workspace-page__header {
@@ -1875,6 +1897,7 @@ pre {
 
 .detail-panel--workspace .detail-panel__workspace {
   grid-template-columns: 1fr;
+  min-height: 0;
 }
 
 .document-editor-grid {

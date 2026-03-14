@@ -30,12 +30,14 @@ pub struct RepoSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct DocumentListItem {
     path: String,
     title: String,
     #[serde(rename = "type")]
     document_type: String,
     status: String,
+    updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -656,14 +658,15 @@ fn parse_tsv_lines(stdout: &str) -> Vec<DocumentListItem> {
                 title: title.to_string(),
                 document_type: document_type.to_string(),
                 status: String::new(),
+                updated_at: String::new(),
             })
         })
         .collect()
 }
 
-fn load_document_status_map(
+fn load_document_index_map(
     state: &tauri::State<'_, AppState>,
-) -> Result<HashMap<String, String>, String> {
+) -> Result<HashMap<String, (String, String)>, String> {
     let output = run_cli_with_state(
         state,
         &["export".to_string(), "document-list".to_string()],
@@ -679,7 +682,10 @@ fn load_document_status_map(
         .filter_map(|row| {
             Some((
                 row.get("path")?.as_str()?.to_string(),
-                row.get("status")?.as_str()?.to_string(),
+                (
+                    row.get("status")?.as_str()?.to_string(),
+                    row.get("updated_at")?.as_str()?.to_string(),
+                ),
             ))
         })
         .collect())
@@ -689,11 +695,14 @@ fn with_document_status(
     state: &tauri::State<'_, AppState>,
     items: Vec<DocumentListItem>,
 ) -> Result<Vec<DocumentListItem>, String> {
-    let status_map = load_document_status_map(state)?;
+    let index_map = load_document_index_map(state)?;
     Ok(items
         .into_iter()
         .map(|mut item| {
-            item.status = status_map.get(&item.path).cloned().unwrap_or_default();
+            if let Some((status, updated_at)) = index_map.get(&item.path) {
+                item.status = status.clone();
+                item.updated_at = updated_at.clone();
+            }
             item
         })
         .collect())

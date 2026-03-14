@@ -15,6 +15,7 @@ export type DocumentListItem = {
   title: string;
   type: string;
   status: string;
+  updatedAt: string;
 };
 
 export type DocumentDetail = {
