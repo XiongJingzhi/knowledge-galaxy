@@ -590,6 +590,29 @@ fn repo_from_state(state: &tauri::State<'_, AppState>) -> Result<PathBuf, String
     Ok(context.current_repo.clone())
 }
 
+fn open_directory_in_system(path: &Path) -> Result<(), String> {
+    let mut command = if cfg!(target_os = "macos") {
+        let mut cmd = Command::new("open");
+        cmd.arg(path);
+        cmd
+    } else if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("explorer");
+        cmd.arg(path);
+        cmd
+    } else {
+        let mut cmd = Command::new("xdg-open");
+        cmd.arg(path);
+        cmd
+    };
+
+    let status = command.status().map_err(|err| err.to_string())?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("打开目录失败: {}", path.display()))
+    }
+}
+
 fn workspace_from_state(state: &tauri::State<'_, AppState>) -> Result<PathBuf, String> {
     let context = state.context.lock().map_err(|_| "state lock poisoned".to_string())?;
     Ok(context.workspace_root.clone())
@@ -623,6 +646,18 @@ fn select_repo(
     context.recent.save(&context.store_path)?;
 
     Ok(summary)
+}
+
+#[tauri::command]
+fn open_repo_directory(
+    path: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let target = match path.as_deref() {
+        Some(value) if !value.trim().is_empty() => normalize_repo_path(Some(value))?,
+        _ => repo_from_state(&state)?,
+    };
+    open_directory_in_system(&target)
 }
 
 #[tauri::command]
@@ -990,6 +1025,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             select_repo,
+            open_repo_directory,
             get_recent_repos,
             list_documents,
             search_documents,

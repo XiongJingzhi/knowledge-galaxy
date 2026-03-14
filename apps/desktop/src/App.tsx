@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  chooseRepoDirectory,
   createDocument,
   getDocument,
   getRecentRepos,
   getStats,
   importAsset,
+  openRepoDirectory,
   listAssets,
   listDocuments,
   listProjects,
@@ -284,12 +284,11 @@ export function App() {
 
   const handleOpenRepoDirectory = async () => {
     try {
-      const selected = await chooseRepoDirectory();
-      if (!selected) {
-        return;
+      const targetRepo = repoPathInput.trim() || repo?.path;
+      await openRepoDirectory(targetRepo);
+      if (targetRepo) {
+        recordActivity("已打开仓库目录", targetRepo, "通过系统文件管理器");
       }
-      await refreshOverview(selected);
-      recordActivity("已切换仓库", selected, "通过系统目录选择器");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -426,87 +425,61 @@ export function App() {
     setRemoteForm((current) => ({ ...current, [field]: value }));
   };
 
-  const sectionHero = useMemo<SectionHeroData>(() => {
-    if (section === "documents") {
-      return {
-        eyebrow: "DOCUMENTS",
-        title: "围绕当前知识切片组织阅读与编辑",
-        description: "先用搜索和过滤缩小范围，再进入编辑区处理当前文档。",
-        actions: [
-          {
-            label: "新建 Note",
-            kind: "primary",
-            onClick: () => {
-              setCreateForm((current) => ({ ...current, type: "note" }));
-              setSection("create");
+  const sectionHero = (() => {
+    switch (section) {
+      case "documents":
+        return {
+          eyebrow: "DOCUMENTS",
+          title: "文档工作区",
+          description: "围绕当前仓库文档继续筛选、聚焦和编辑。",
+          actions: [
+            {
+              label: "新建 Note",
+              kind: "primary" as const,
+              onClick: () => {
+                setCreateForm((current) => ({ ...current, type: "note" }));
+                setSection("create");
+              },
             },
-          },
-          {
-            label: "重置视图",
-            kind: "ghost",
-            onClick: resetDocumentView,
-          },
-        ],
-      };
-    }
-    if (section === "create") {
-      return {
-        eyebrow: "CREATE",
-        title: "把新内容快速落到正确的文档模板里",
-        description: "创建中心沿用现有 CLI 规则，适合集中补写 daily、note、review 与 project。",
-        actions: [
-          {
-            label: "返回文档",
-            kind: "ghost",
-            onClick: () => setSection("documents"),
-          },
-        ],
-      };
-    }
-    if (section === "assets") {
-      return {
-        eyebrow: "ASSETS",
-        title: "统一查看仓库级与项目级资源",
-        description: "核对资源作用域、项目归属与摘要指纹，再决定是否继续导入新的文件。",
-        actions: [
-          {
-            label: "查看全部资源",
-            kind: "ghost",
-            onClick: () => {
-              setAssetScope("all");
-              setAssetProjectFilter("");
+            {
+              label: "重置视图",
+              kind: "ghost" as const,
+              onClick: resetDocumentView,
             },
-          },
-        ],
-      };
+          ],
+        };
+      case "create":
+        return {
+          eyebrow: "CREATE",
+          title: "创建工作区",
+          description: "先选配方，再补关键字段和正文初稿。",
+          actions: [],
+        };
+      case "assets":
+        return {
+          eyebrow: "ASSETS",
+          title: "资源工作区",
+          description: "按作用域查看资源库存，并把新文件导入到仓库或项目中。",
+          actions: [],
+        };
+      case "ops":
+        return {
+          eyebrow: "OPS",
+          title: "校验与导出",
+          description: "运行校验并生成当前仓库的导出快照。",
+          actions: [],
+        };
+      case "projects":
+        return {
+          eyebrow: "PROJECTS",
+          title: "项目工作区",
+          description: "把知识项目和代码仓库命令重新接上。",
+          actions: [],
+        };
+      case "home":
+        return null;
     }
-    if (section === "ops") {
-      return {
-        eyebrow: "OPERATIONS",
-        title: "把校验结果和导出快照整理到一起",
-        description: "适合在发布前快速检查知识库状态，并保留可保存的导出结果。",
-        actions: [
-          {
-            label: "快速校验",
-            kind: "primary",
-            onClick: () => void handleValidate(),
-          },
-        ],
-      };
-    }
-    return {
-      eyebrow: "PROJECTS",
-      title: "把知识库里的项目条目和代码仓库联动起来",
-      description: "项目页面负责远端联接、同步和推送，并保留原始命令输出。",
-      actions: [
-        {
-          label: "返回文档",
-          kind: "ghost",
-          onClick: () => setSection("documents"),
-        },
-      ],
-    };
-  }, [section]);
+  })();
 
   const pageContent = (() => {
     switch (section) {
@@ -615,7 +588,7 @@ export function App() {
             pageContent
           ) : (
             <>
-              <SectionHero hero={sectionHero} />
+              {sectionHero ? <SectionHero hero={sectionHero} /> : null}
               <OverviewStrip cards={overviewCards} />
               <ActivityFeed items={activityItems} />
               {pageContent}

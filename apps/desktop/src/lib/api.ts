@@ -65,16 +65,8 @@ export async function selectRepo(path?: string): Promise<RepoSummary> {
   return call("select_repo", { path });
 }
 
-export async function chooseRepoDirectory(): Promise<string | null> {
-  if (!isTauriRuntime()) {
-    throw new Error("目录选择只在 Tauri 运行时可用");
-  }
-  const { open } = await import("@tauri-apps/plugin-dialog");
-  const selected = await open({
-    directory: true,
-    multiple: false,
-  });
-  return typeof selected === "string" ? selected : null;
+export async function openRepoDirectory(path?: string): Promise<void> {
+  return call("open_repo_directory", { path });
 }
 
 export async function getRecentRepos(): Promise<RepoSummary[]> {

@@ -7,13 +7,13 @@ vi.mock("./lib/api", async () => {
   return {
     ...actual,
     createDocument: vi.fn(),
-    chooseRepoDirectory: vi.fn(),
     getDocument: vi.fn(),
     getRecentRepos: vi.fn(),
     getStats: vi.fn(),
     importAsset: vi.fn(),
     listAssets: vi.fn(),
     listDocuments: vi.fn(),
+    openRepoDirectory: vi.fn(),
     listProjects: vi.fn(),
     runExport: vi.fn(),
     runProjectCommand: vi.fn(),
@@ -38,7 +38,7 @@ function arrangeApi() {
     { path: "/tmp/alt-repo", isDefault: false, exists: true },
   ]);
   mockedApi.listDocuments.mockResolvedValue([]);
-  mockedApi.chooseRepoDirectory.mockResolvedValue("/tmp/chosen-repo");
+  mockedApi.openRepoDirectory.mockResolvedValue(undefined);
   mockedApi.searchDocuments.mockResolvedValue([]);
   mockedApi.listAssets.mockResolvedValue([]);
   mockedApi.getStats.mockResolvedValue({
@@ -112,16 +112,15 @@ describe("App", () => {
     });
   });
 
-  it("opens a native directory picker and switches to the selected repository", async () => {
+  it("opens the current repository directory from the command bar", async () => {
     render(<App />);
 
-    await screen.findByText("知识总览");
+    await screen.findByDisplayValue("/tmp/default-repo");
 
     fireEvent.click(screen.getByRole("button", { name: "打开目录" }));
 
     await waitFor(() => {
-      expect(mockedApi.chooseRepoDirectory).toHaveBeenCalledTimes(1);
-      expect(mockedApi.selectRepo).toHaveBeenCalledWith("/tmp/chosen-repo");
+      expect(mockedApi.openRepoDirectory).toHaveBeenCalledWith("/tmp/default-repo");
     });
   });
 
