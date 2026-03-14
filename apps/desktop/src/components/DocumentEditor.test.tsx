@@ -57,10 +57,10 @@ describe("DocumentEditor", () => {
     render(<DocumentEditor document={detail} onSave={() => undefined} />);
 
     expect(screen.getByTestId("document-writer")).toBeInTheDocument();
-    expect(screen.getByText("Markdown 编辑")).toBeInTheDocument();
+    expect(screen.getByLabelText("标题")).toBeInTheDocument();
     expect(screen.getByText("实时预览")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Idea")).toBeInTheDocument();
-    expect(screen.getByTestId("document-editor-title")).toHaveTextContent("Idea");
+    expect(screen.getByTestId("document-editor-title")).toHaveValue("Idea");
     expect(screen.getByTestId("document-workspace-content")).toBeInTheDocument();
     expect(screen.getByText("创建时间")).toBeInTheDocument();
     expect(screen.getByText("更新时间")).toBeInTheDocument();
@@ -70,13 +70,23 @@ describe("DocumentEditor", () => {
     expect(screen.queryByLabelText("日期")).not.toBeInTheDocument();
   });
 
-  it("renders the title input and body editor inside a unified writer surface", () => {
+  it("renders only the markdown body editor inside the writer surface", () => {
     render(<DocumentEditor document={detail} onSave={() => undefined} />);
 
     const writer = screen.getByTestId("document-writer");
-    expect(writer).toContainElement(screen.getByLabelText("标题"));
     expect(writer).toContainElement(screen.getByLabelText("Markdown 正文"));
-    expect(screen.getByTestId("document-writer-badge")).toHaveTextContent("Markdown 编辑");
+    expect(screen.queryByTestId("document-writer-badge")).not.toBeInTheDocument();
+    expect(writer.querySelector('input[aria-label="标题"]')).not.toBeInTheDocument();
+  });
+
+  it("edits the title directly from the header title field", () => {
+    render(<DocumentEditor document={detail} onSave={() => undefined} />);
+
+    const headerTitle = screen.getByTestId("document-editor-title");
+    fireEvent.change(headerTitle, { target: { value: "Inline Title" } });
+
+    expect(screen.getByDisplayValue("Inline Title")).toBeInTheDocument();
+    expect(screen.getByText("未保存变更")).toBeInTheDocument();
   });
 
   it("copies the document path from the dossier strip", async () => {

@@ -87,7 +87,14 @@ export function DocumentEditor({
       <div className="detail-panel__header">
         <div className="document-editor__headline">
           <span className="eyebrow">{mode === "create" ? "Markdown 编辑" : draft.path}</span>
-          <h2 data-testid="document-editor-title">{draft.title || (mode === "create" ? "未命名文档" : "文档编辑")}</h2>
+          <input
+            aria-label="标题"
+            className="document-editor__title-input"
+            data-testid="document-editor-title"
+            placeholder="未命名文档"
+            value={draft.title}
+            onChange={(event) => patch({ title: event.currentTarget.value })}
+          />
         </div>
         <div className="detail-panel__status">
           {dirty ? <span className="status-pill is-dirty">未保存变更</span> : null}
@@ -105,25 +112,7 @@ export function DocumentEditor({
         <div className="document-editor-grid">
           <section className="editor-column">
             <section className="document-writer" data-testid="document-writer">
-              <div className="document-writer__context">
-                <span className="eyebrow">{mode === "create" ? "新建文档" : "文档工作区"}</span>
-                <strong>{draft.path || "路径将在保存后生成"}</strong>
-              </div>
-              <label className="document-writer__title">
-                <span>标题</span>
-                <input
-                  aria-label="标题"
-                  placeholder="输入文档标题"
-                  value={draft.title}
-                  onChange={(event) => patch({ title: event.currentTarget.value })}
-                />
-              </label>
               <section className="document-writer__body">
-                <div className="document-writer__body-header">
-                  <span className="document-writer__badge" data-testid="document-writer-badge">
-                    Markdown 编辑
-                  </span>
-                </div>
                 <textarea
                   aria-label="Markdown 正文"
                   placeholder="从这里开始整理你的 Markdown 文档..."
