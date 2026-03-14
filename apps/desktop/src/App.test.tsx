@@ -125,6 +125,47 @@ describe("App", () => {
     });
   });
 
+  it("defaults to a one-screen home summary view", async () => {
+    render(<App />);
+
+    await screen.findByDisplayValue("/tmp/default-repo");
+
+    expect(screen.getByText("结构总控台")).toBeInTheDocument();
+    expect(screen.getByLabelText("全局搜索")).toBeInTheDocument();
+    expect(screen.getAllByText("进入文档页").length).toBeGreaterThan(0);
+    expect(screen.queryByText("文档浏览")).not.toBeInTheDocument();
+  });
+
+  it("navigates from home search to documents with the query applied", async () => {
+    render(<App />);
+
+    await screen.findByDisplayValue("/tmp/default-repo");
+
+    fireEvent.change(screen.getByLabelText("全局搜索"), {
+      target: { value: "galaxy query" },
+    });
+    fireEvent.keyDown(screen.getByLabelText("全局搜索"), {
+      key: "Enter",
+      code: "Enter",
+      charCode: 13,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("文档浏览")).toBeInTheDocument();
+      expect(screen.getByLabelText("搜索")).toHaveValue("galaxy query");
+    });
+  });
+
+  it("opens a secondary page from the home entry cards", async () => {
+    render(<App />);
+
+    await screen.findByDisplayValue("/tmp/default-repo");
+
+    fireEvent.click(screen.getByRole("button", { name: "进入资源页" }));
+
+    expect(await screen.findByText("资源过滤")).toBeInTheDocument();
+  });
+
   it("removes duplicated repository status copy from the shell", async () => {
     render(<App />);
 
@@ -155,7 +196,7 @@ describe("App", () => {
 
     expect(screen.getByText("结构总控台")).toBeInTheDocument();
     expect(screen.getByText("当前区段")).toBeInTheDocument();
-    expect(screen.getByText(/文档工作台/)).toBeInTheDocument();
+    expect(screen.getAllByText(/首页总览/).length).toBeGreaterThan(0);
     expect(screen.getByText("知识结构总量")).toBeInTheDocument();
   });
 
@@ -163,6 +204,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     expect(
       await screen.findByText("当前视图没有文档结果"),
@@ -174,6 +216,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     fireEvent.click(screen.getByRole("button", { name: "新建 Note" }));
 
@@ -185,6 +228,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     fireEvent.change(screen.getByLabelText("搜索"), {
       target: { value: "search phrase" },
@@ -208,6 +252,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     expect(screen.getByText("文档信号条")).toBeInTheDocument();
     expect(screen.getByText("active")).toBeInTheDocument();
@@ -219,6 +264,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     fireEvent.change(screen.getByLabelText("搜索"), {
       target: { value: "search phrase" },
@@ -404,6 +450,8 @@ describe("App", () => {
 
     render(<App />);
 
+    await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
     await screen.findByText("Idea");
 
     fireEvent.click(screen.getByRole("button", { name: "Idea note · active notes/idea.md" }));
@@ -438,6 +486,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     fireEvent.change(screen.getByLabelText("搜索"), {
       target: { value: "search phrase" },
@@ -454,6 +503,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByDisplayValue("/tmp/default-repo");
+    fireEvent.click(screen.getByRole("button", { name: "文档" }));
 
     fireEvent.change(screen.getByLabelText("状态"), {
       target: { value: "active" },

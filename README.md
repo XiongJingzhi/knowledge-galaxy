@@ -69,21 +69,18 @@ README.md
 - `project push`
 - `project sync`
 
-桌面端当前也已具备以下管理界面：
+桌面端当前已经切到“首页总览 + 二级工作页”的结构：
 
-- 概览带，可快速查看总文档、资源、最近仓库以及主要分布
-- 最近操作反馈层，可汇总当前会话中的关键成功动作
-- section hero 工作台引导层，会按当前区域显示任务说明与快捷动作
-- 文档信号条，会把高频类型、状态、主题统计转成一键聚焦入口
-- 文档档案条，会在编辑区集中展示当前文档的身份信息与关系标签，并支持复制路径
-- 文档浏览、过滤、搜索
-- Markdown 文档详情编辑与保存
-- 文档创建中心
-- 资源导入与 `asset-list` 浏览，并支持按仓库级 / 项目级切换查看
-- 校验与导出面板
-- 项目远端操作面板
+- 首页控制在一屏内，集中承载仓库切换、全局搜索、结构总览、最近操作和功能入口
+- 文档、创建、资源、校验导出、项目都作为二级页承载完整功能
+- 侧栏加入桌面端专用的星系 logo，延续深色结构网格与轨道视觉语言
+- 文档页支持浏览、过滤、搜索、信号条聚焦、详情编辑与保存
+- 创建页提供 `daily / note / decision / review / project` 配方台
+- 资源页支持 `asset-list` 浏览、按仓库级 / 项目级切换以及资源导入
+- 校验导出页支持 `validate`、`document-list`、`manifest`、`change-list`、`asset-list`
+- 项目页支持 `add-remote`、`fetch`、`push`、`sync`
 
-桌面端当前的界面方向已经收敛到“档案工作台 / 研究台”，并补齐了空状态、当前视图反馈、section hero 引导层与文档信号条，不再只是表单化控制台。
+桌面端当前的界面方向已经收敛到“星系控制台 / 结构工作台”，首页负责总览与分发，二级页负责高密度操作，不再默认把所有工作台直接摊在首屏。
 
 ## 默认知识仓库
 
@@ -140,15 +137,13 @@ make build-desktop
 
 ## CI 与发布
 
-GitHub Actions 当前会执行以下流程：
+GitHub Actions 当前拆成三个工作流：
 
-- 在推送到 `main` 和创建 `pull_request` 时运行 `make test`
-- 在 Ubuntu runner 上额外验证桌面端的前端构建与 Tauri Rust 后端构建
-- 构建 Go 与 Rust 的 macOS / Linux / Windows 二进制
-- 在每次推送到 `main` 时更新固定的 `Nightly` 预发布版本
+- `ci.yml`：在 `pull_request` 和推送到 `main` 时运行仓库测试，并单独校验桌面端组件测试、前端构建和 Tauri Rust 后端 `cargo check`
+- `integration.yml`：在推送到 `main` 或手动触发时构建桌面端前端产物，以及 Go / Rust 的跨平台构建产物并上传 artifact
+- `release.yml`：在推送到 `main` 或手动触发时重新构建 nightly 所需产物，并更新固定的 `Nightly` 预发布版本
 
-Nightly 预发布会同时包含 Go 和 Rust 的各平台产物，并使用语言前缀避免重名覆盖。
-当前 CI 还不会把桌面端 bundle 发布到 nightly release，桌面端构建目前仅用于回归验证。
+Nightly 预发布当前会包含 Go、Rust 以及桌面端前端产物，命名保持语言或目标平台前缀，避免重名覆盖。
 
 ## 直接入口
 

@@ -57,6 +57,11 @@ const sectionDeskCopy: Record<
     index: string;
   }
 > = {
+  home: {
+    title: "首页总览",
+    description: "用一屏完成仓库切换、全局搜索与功能页分发，先看全局，再进入操作区。",
+    index: "00",
+  },
   documents: {
     title: "文档工作台",
     description: "围绕当前知识切片组织检索、筛选、阅读与编辑。",
@@ -85,7 +90,8 @@ const sectionDeskCopy: Record<
 };
 
 export function App() {
-  const [section, setSection] = useState<NavSection>("documents");
+  const [section, setSection] = useState<NavSection>("home");
+  const [globalSearch, setGlobalSearch] = useState("");
   const [repoPathInput, setRepoPathInput] = useState("");
   const [repo, setRepo] = useState<RepoSummary | null>(null);
   const [recentRepos, setRecentRepos] = useState<RepoSummary[]>([]);
@@ -259,6 +265,43 @@ export function App() {
   const activeCreateRecipe =
     createRecipes.find((recipe) => recipe.type === createForm.type) ?? createRecipes[0];
   const deskSection = sectionDeskCopy[section];
+  const homeEntryCards = [
+    {
+      section: "documents" as const,
+      eyebrow: "DOCS",
+      title: "文档总览",
+      description: "进入检索、筛选、阅读和编辑工作台。",
+      actionLabel: "进入文档页",
+    },
+    {
+      section: "create" as const,
+      eyebrow: "CREATE",
+      title: "快速创建",
+      description: "按配方生成 note、daily、decision、review、project。",
+      actionLabel: "进入创建页",
+    },
+    {
+      section: "assets" as const,
+      eyebrow: "ASSET",
+      title: "资源台账",
+      description: "按作用域查看资产，并继续导入文件。",
+      actionLabel: "进入资源页",
+    },
+    {
+      section: "ops" as const,
+      eyebrow: "OPS",
+      title: "校验与导出",
+      description: "集中校验仓库并生成导出快照。",
+      actionLabel: "进入校验页",
+    },
+    {
+      section: "projects" as const,
+      eyebrow: "PROJECT",
+      title: "项目桥",
+      description: "把知识项目和真实代码仓库重新对齐。",
+      actionLabel: "进入项目页",
+    },
+  ];
   const desktopMetrics = useMemo(
     () => [
       { label: "知识结构总量", value: String(stats?.total ?? 0) },
@@ -307,6 +350,14 @@ export function App() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
+  };
+  const openSection = (nextSection: Exclude<NavSection, "home">) => {
+    setSection(nextSection);
+  };
+  const submitHomeSearch = () => {
+    setFilters({});
+    setQuery(globalSearch.trim());
+    setSection("documents");
   };
 
   useEffect(() => {
@@ -412,6 +463,21 @@ export function App() {
   };
 
   const sectionHero = useMemo(() => {
+    if (section === "home") {
+      return {
+        eyebrow: "HOME CONSTELLATION",
+        title: "在一屏内完成知识库概览、搜索与分发",
+        description:
+          "首页只保留结构总览、最近动作和功能入口，真正的编辑、导入、校验和项目操作都进入对应二级页。",
+        actions: [
+          {
+            label: "进入文档页",
+            kind: "primary" as const,
+            onClick: () => openSection("documents"),
+          },
+        ],
+      };
+    }
     if (section === "documents") {
       return {
         eyebrow: "DOCUMENT WORKBENCH",
@@ -498,6 +564,35 @@ export function App() {
     };
   }, [section, handleValidate]);
 
+  const activityFeed = (
+    <section className="activity-feed panel">
+      <div className="panel__header">
+        <h3>最近操作</h3>
+        <span>{activityItems.length ? `${activityItems.length} 条` : "等待操作"}</span>
+      </div>
+      <div className="activity-feed__list">
+        {activityItems.length ? (
+          activityItems.map((item, index) => (
+            <article key={`${item.title}-${item.detail}-${index}`} className="activity-item">
+              <span className="activity-item__index">{(index + 1).toString().padStart(2, "0")}</span>
+              <div>
+                <strong>{item.title}</strong>
+                <p>{item.detail}</p>
+                {item.note ? <span>{item.note}</span> : null}
+              </div>
+            </article>
+          ))
+        ) : (
+          <article className="empty-state empty-state--compact">
+            <span className="eyebrow">ACTIVITY FEED</span>
+            <h4>最近还没有新的操作</h4>
+            <p>创建、保存、导入、校验、导出和项目命令完成后，结果会在这里汇总展示。</p>
+          </article>
+        )}
+      </div>
+    </section>
+  );
+
   return (
     <div className="app-shell">
       <Sidebar section={section} onChange={setSection} />
@@ -564,63 +659,110 @@ export function App() {
             </div>
           </div>
         </section>
-        <div className="workspace__content">
-          <section className="overview-strip">
-            {overviewCards.map((card) => (
-              <article
-                key={card.label}
-                className={`overview-card overview-card--${card.accent}`}
-              >
-                <span className="overview-card__label">{card.label}</span>
-                <strong className="overview-card__value">{card.value}</strong>
-              </article>
-            ))}
-          </section>
-          <section className="activity-feed panel">
-            <div className="panel__header">
-              <h3>最近操作</h3>
-              <span>{activityItems.length ? `${activityItems.length} 条` : "等待操作"}</span>
-            </div>
-            <div className="activity-feed__list">
-              {activityItems.length ? (
-                activityItems.map((item, index) => (
-                  <article key={`${item.title}-${item.detail}-${index}`} className="activity-item">
-                    <span className="activity-item__index">{(index + 1).toString().padStart(2, "0")}</span>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.detail}</p>
-                      {item.note ? <span>{item.note}</span> : null}
-                    </div>
+        <div className={section === "home" ? "workspace__content workspace__content--home" : "workspace__content"}>
+          {section === "home" ? (
+            <section className="home-grid">
+              <section className="home-command panel">
+                <div className="panel__header">
+                  <h3>首页总览</h3>
+                  <span>一屏入口</span>
+                </div>
+                <div className="home-command__body">
+                  <div className="home-command__copy">
+                    <span className="eyebrow">GLOBAL SEARCH</span>
+                    <strong>全局搜索</strong>
+                    <p>用一个查询直接跳入文档页，也可以从下方入口卡进入具体二级工作区。</p>
+                  </div>
+                  <label className="field field--wide">
+                    <span>全局搜索</span>
+                    <input
+                      aria-label="全局搜索"
+                      value={globalSearch}
+                      onChange={(event) => setGlobalSearch(event.currentTarget.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          submitHomeSearch();
+                        }
+                      }}
+                      placeholder="搜索标题、正文或路径中的关键词"
+                    />
+                  </label>
+                  <div className="home-command__actions">
+                    <button className="primary-button" type="button" onClick={submitHomeSearch}>
+                      进入文档页
+                    </button>
+                    <button className="ghost-button" type="button" onClick={() => openSection("create")}>
+                      进入创建页
+                    </button>
+                  </div>
+                </div>
+              </section>
+              <section className="home-summary">
+                <section className="overview-strip">
+                  {overviewCards.map((card) => (
+                    <article
+                      key={card.label}
+                      className={`overview-card overview-card--${card.accent}`}
+                    >
+                      <span className="overview-card__label">{card.label}</span>
+                      <strong className="overview-card__value">{card.value}</strong>
+                    </article>
+                  ))}
+                </section>
+                <section className="home-entry-grid">
+                  {homeEntryCards.map((card) => (
+                    <article key={card.section} className="home-entry-card">
+                      <span className="eyebrow">{card.eyebrow}</span>
+                      <h3>{card.title}</h3>
+                      <p>{card.description}</p>
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        onClick={() => openSection(card.section)}
+                      >
+                        {card.actionLabel}
+                      </button>
+                    </article>
+                  ))}
+                </section>
+              </section>
+              {activityFeed}
+            </section>
+          ) : (
+            <>
+              <section className="section-hero">
+                <div className="section-hero__body">
+                  <span className="eyebrow">{sectionHero.eyebrow}</span>
+                  <h3>{sectionHero.title}</h3>
+                  <p>{sectionHero.description}</p>
+                </div>
+                <div className="section-hero__actions">
+                  {sectionHero.actions.map((action) => (
+                    <button
+                      key={action.label}
+                      className={action.kind === "primary" ? "primary-button" : "ghost-button"}
+                      type="button"
+                      onClick={action.onClick}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="overview-strip">
+                {overviewCards.map((card) => (
+                  <article
+                    key={card.label}
+                    className={`overview-card overview-card--${card.accent}`}
+                  >
+                    <span className="overview-card__label">{card.label}</span>
+                    <strong className="overview-card__value">{card.value}</strong>
                   </article>
-                ))
-              ) : (
-                <article className="empty-state empty-state--compact">
-                  <span className="eyebrow">ACTIVITY FEED</span>
-                  <h4>最近还没有新的操作</h4>
-                  <p>创建、保存、导入、校验、导出和项目命令完成后，结果会在这里汇总展示。</p>
-                </article>
-              )}
-            </div>
-          </section>
-          <section className="section-hero">
-            <div className="section-hero__body">
-              <span className="eyebrow">{sectionHero.eyebrow}</span>
-              <h3>{sectionHero.title}</h3>
-              <p>{sectionHero.description}</p>
-            </div>
-            <div className="section-hero__actions">
-              {sectionHero.actions.map((action) => (
-                <button
-                  key={action.label}
-                  className={action.kind === "primary" ? "primary-button" : "ghost-button"}
-                  type="button"
-                  onClick={action.onClick}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          </section>
+                ))}
+              </section>
+              {activityFeed}
+            </>
+          )}
           {section === "documents" ? (
             <div className="content-grid">
               <section className="panel">

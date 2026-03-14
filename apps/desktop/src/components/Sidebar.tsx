@@ -1,6 +1,8 @@
 import type { NavSection } from "../lib/types";
+import { GalaxyLogo } from "./GalaxyLogo";
 
 const labels: Record<NavSection, string> = {
+  home: "首页",
   documents: "文档",
   create: "创建",
   assets: "资源",
@@ -18,13 +20,11 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <span className="sidebar__kicker">STRUCTURAL DESK</span>
-        <h1>Knowledge Galaxy</h1>
-        <p>用结构组织当前知识库，而不是把内容堆成后台列表。</p>
-        <div className="sidebar__seal">
-          <strong>KG</strong>
-          <span>Core Console</span>
+        <div className="sidebar__brand-mark">
+          <GalaxyLogo />
         </div>
+        <h1>知识星系</h1>
+        <p>结构化首页负责概览、搜索与进入功能页，具体操作都收进二级工作区。</p>
       </div>
       <nav className="sidebar__nav">
         {(Object.keys(labels) as NavSection[]).map((item, index) => (
