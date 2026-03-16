@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from uuid import uuid4
@@ -11,7 +11,7 @@ def generate_document_id() -> str:
 
 
 def utc_timestamp() -> str:
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, object], str]:

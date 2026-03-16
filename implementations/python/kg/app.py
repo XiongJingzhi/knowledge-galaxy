@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import argparse
-from datetime import date, datetime, UTC
+from datetime import date, datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -142,7 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def parse_iso_date(value: str | None) -> date:
     if value is None:
-        return datetime.now(UTC).date()
+        return datetime.now(timezone.utc).date()
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
