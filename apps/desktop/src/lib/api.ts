@@ -151,6 +151,10 @@ export async function saveDocument(
   return call("save_document", { path, payload });
 }
 
+export async function deleteDocument(path: string): Promise<{ path: string }> {
+  return call("delete_document", { path });
+}
+
 export async function createDocument(
   docType: string,
   payload: CreatePayload,

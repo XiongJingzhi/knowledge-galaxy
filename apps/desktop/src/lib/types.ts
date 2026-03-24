@@ -18,6 +18,8 @@ export type DocumentListItem = {
   updatedAt: string;
 };
 
+export type DocumentViewMode = "preview" | "edit";
+
 export type DocumentDetail = {
   path: string;
   id: string;
@@ -35,6 +37,24 @@ export type DocumentDetail = {
   summary: string;
   body: string;
   gitWorktree: string;
+};
+
+export type OpenDocumentTab = {
+  id: string;
+  path: string;
+  title: string;
+  dirty: boolean;
+  mode: DocumentViewMode;
+  isNew?: boolean;
+};
+
+export type DocumentTreeNode = {
+  id: string;
+  name: string;
+  path?: string;
+  updatedAt?: string;
+  kind: "folder" | "document";
+  children?: DocumentTreeNode[];
 };
 
 export type AssetRecord = {

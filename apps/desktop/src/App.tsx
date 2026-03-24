@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   analyzeKnowledgeMigration,
@@ -6,6 +6,7 @@ import {
   chooseKnowledgeSourceFile,
   chooseRepoDirectory,
   createDocument,
+  deleteDocument,
   getDocument,
   getRecentRepos,
   getStats,
@@ -31,7 +32,6 @@ import {
 } from "./lib/api";
 import { Sidebar } from "./components/Sidebar";
 import { AssetsPage } from "./pages/AssetsPage";
-import { DocumentCreatePage } from "./pages/DocumentCreatePage";
 import { DocumentsPage } from "./pages/DocumentsPage";
 import { HomePage } from "./pages/HomePage";
 import { OpsPage } from "./pages/OpsPage";
@@ -46,6 +46,7 @@ import type {
   KnowledgeMigrationImportResult,
   KnowledgeMigrationPreview,
   NavSection,
+  OpenDocumentTab,
 } from "./lib/types";
 
 const defaultDetail: DocumentDetail = {
@@ -104,15 +105,24 @@ function desktopSectionFromPath(pathname: string): NavSection {
   return "home";
 }
 
-function fileNameFromPath(path: string): string {
+function fileNameFromPath(path: string) {
   const segments = path.split(/[/\\]/);
   return segments[segments.length - 1] ?? "";
+}
+
+function tabLabelFromDocument(document: DocumentDetail) {
+  return document.title.trim() || fileNameFromPath(document.path) || "未命名文档";
+}
+
+function currentTabFromTabs(tabs: OpenDocumentTab[], activeTabId: string | null) {
+  return tabs.find((tab) => tab.id === activeTabId) ?? null;
 }
 
 function DesktopAppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const section = desktopSectionFromPath(location.pathname);
+  const draftCounterRef = useRef(1);
 
   const [globalSearch, setGlobalSearch] = useState("");
   const [repoPathInput, setRepoPathInput] = useState("");
@@ -121,9 +131,9 @@ function DesktopAppShell() {
   const [filters, setFilters] = useState<DocumentFilters>({});
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [detail, setDetail] = useState<DocumentDetail | null>(null);
-  const [createDraft, setCreateDraft] = useState<DocumentDetail>(() => buildCreateDraft());
+  const [openDocumentTabs, setOpenDocumentTabs] = useState<OpenDocumentTab[]>([]);
+  const [activeDocumentTabId, setActiveDocumentTabId] = useState<string | null>(null);
+  const [documentDrafts, setDocumentDrafts] = useState<Record<string, DocumentDetail>>({});
   const [assets, setAssets] = useState<AssetRecord[]>([]);
   const [selectedAssetPath, setSelectedAssetPath] = useState<string | null>(null);
   const [stats, setStats] = useState<StatsSnapshot | null>(null);
@@ -133,7 +143,7 @@ function DesktopAppShell() {
   const [selectedProject, setSelectedProject] = useState("");
   const [projectResult, setProjectResult] = useState<CommandResult | null>(null);
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [sectionErrors, setSectionErrors] = useState<Partial<Record<NavSection, string>>>({});
   const [assetForm, setAssetForm] = useState({
     filePath: "",
     targetName: "",
@@ -157,6 +167,24 @@ function DesktopAppShell() {
   const recordActivity = (title: string, detailText: string, note?: string) => {
     setActivityItems((current) => [{ title, detail: detailText, note }, ...current].slice(0, 5));
   };
+
+  const setSectionError = (targetSection: NavSection, message: string | null) => {
+    setSectionErrors((current) => {
+      if (!message) {
+        if (!(targetSection in current)) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[targetSection];
+        return next;
+      }
+      return { ...current, [targetSection]: message };
+    });
+  };
+
+  const currentSectionError = sectionErrors[section] ?? null;
+  const activeDocumentTab = currentTabFromTabs(openDocumentTabs, activeDocumentTabId);
+  const activeDocument = activeDocumentTab ? documentDrafts[activeDocumentTab.id] ?? null : null;
 
   const activeFilterEntries = useMemo(
     () =>
@@ -210,45 +238,115 @@ function DesktopAppShell() {
   );
 
   const refreshOverview = async (repoPath?: string) => {
+    const summary = await selectRepo(repoPath);
+    setRepo(summary);
+    setRepoPathInput(summary.path);
+    const [recent, listed, assetList, statsSnapshot, projectList] = await Promise.all([
+      getRecentRepos(),
+      listDocuments(filters),
+      listAssets(),
+      getStats(),
+      listProjects(),
+    ]);
+    setRecentRepos(recent);
+    setDocuments(listed);
+    setAssets(assetList);
+    setSelectedAssetPath((current) => {
+      if (!assetList.length) {
+        return null;
+      }
+      if (current && assetList.some((asset) => asset.path === current)) {
+        return current;
+      }
+      return assetList[0]?.path ?? null;
+    });
+    setStats(statsSnapshot);
+    setProjects(projectList);
+    setSelectedProject((current) => {
+      if (projectList.some((item) => item.slug === current)) {
+        return current;
+      }
+      return projectList[0]?.slug ?? "";
+    });
+  };
+
+  const openDocumentTab = async (path: string) => {
+    const existing = openDocumentTabs.find((tab) => tab.path === path);
+    if (existing) {
+      setActiveDocumentTabId(existing.id);
+      navigate("/documents");
+      setSectionError("documents", null);
+      return;
+    }
+
     try {
-      const summary = await selectRepo(repoPath);
-      setRepo(summary);
-      setRepoPathInput(summary.path);
-      const [recent, listed, assetList, statsSnapshot, projectList] = await Promise.all([
-        getRecentRepos(),
-        listDocuments(filters),
-        listAssets(),
-        getStats(),
-        listProjects(),
-      ]);
-      setRecentRepos(recent);
-      setDocuments(listed);
-      setAssets(assetList);
-      setSelectedAssetPath((current) => {
-        if (!assetList.length) {
-          return null;
-        }
-        if (current && assetList.some((asset) => asset.path === current)) {
-          return current;
-        }
-        return assetList[0]?.path ?? null;
-      });
-      setStats(statsSnapshot);
-      setProjects(projectList);
-      setSelectedProject((current) => {
-        if (projectList.some((item) => item.slug === current)) {
-          return current;
-        }
-        return projectList[0]?.slug ?? "";
-      });
-      setError(null);
+      const detail = await getDocument(path);
+      const tab: OpenDocumentTab = {
+        id: path,
+        path,
+        title: tabLabelFromDocument(detail),
+        dirty: false,
+        mode: "preview",
+      };
+      setDocumentDrafts((current) => ({ ...current, [tab.id]: detail }));
+      setOpenDocumentTabs((current) => [...current, tab]);
+      setActiveDocumentTabId(tab.id);
+      setSectionError("documents", null);
+      navigate("/documents");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("documents", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
+  const openCreateTab = () => {
+    const tabId = `draft:${draftCounterRef.current++}`;
+    const draft = buildCreateDraft();
+    setDocumentDrafts((current) => ({ ...current, [tabId]: draft }));
+    setOpenDocumentTabs((current) => [
+      ...current,
+      {
+        id: tabId,
+        path: "",
+        title: "未命名文档",
+        dirty: false,
+        mode: "preview",
+        isNew: true,
+      },
+    ]);
+    setActiveDocumentTabId(tabId);
+    setSectionError("documents", null);
+    navigate("/documents");
+  };
+
+  const closeDocumentTab = (tabId: string) => {
+    setOpenDocumentTabs((current) => {
+      const index = current.findIndex((tab) => tab.id === tabId);
+      if (index < 0) {
+        return current;
+      }
+      const nextTabs = current.filter((tab) => tab.id !== tabId);
+      if (activeDocumentTabId === tabId) {
+        const fallback = nextTabs[index] ?? nextTabs[index - 1] ?? null;
+        setActiveDocumentTabId(fallback?.id ?? null);
+      }
+      return nextTabs;
+    });
+    setDocumentDrafts((current) => {
+      const next = { ...current };
+      delete next[tabId];
+      return next;
+    });
+  };
+
   useEffect(() => {
-    void refreshOverview();
+    void (async () => {
+      try {
+        await refreshOverview();
+        setSectionError("home", null);
+      } catch (cause) {
+        setSectionError("home", cause instanceof Error ? cause.message : String(cause));
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -256,32 +354,24 @@ function DesktopAppShell() {
       try {
         const next = query.trim() ? await searchDocuments(query.trim(), filters) : await listDocuments(filters);
         setDocuments(next);
+        setSectionError("documents", null);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setSectionError("documents", cause instanceof Error ? cause.message : String(cause));
       }
     };
     void task();
   }, [filters, query]);
 
   useEffect(() => {
-    if (location.pathname !== "/documents/edit") {
-      return;
-    }
-    const documentPath = new URLSearchParams(location.search).get("path");
-    if (documentPath) {
-      setSelectedPath((current) => (current === documentPath ? current : documentPath));
-    }
-  }, [location.pathname, location.search]);
+    const handleWindowFocus = () => {
+      void refreshOverview(repo?.path).catch(() => undefined);
+    };
 
-  useEffect(() => {
-    if (!selectedPath) {
-      setDetail(null);
-      return;
-    }
-    void getDocument(selectedPath)
-      .then(setDetail)
-      .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
-  }, [selectedPath]);
+    window.addEventListener("focus", handleWindowFocus);
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, [repo?.path, filters]);
 
   const handleOpenRepoDirectory = async () => {
     try {
@@ -290,8 +380,9 @@ function DesktopAppShell() {
       if (targetRepo) {
         recordActivity("已打开仓库目录", targetRepo, "通过系统文件管理器");
       }
+      setSectionError("home", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("home", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -303,37 +394,107 @@ function DesktopAppShell() {
       }
       await refreshOverview(selected);
       recordActivity("已切换仓库", selected, "通过系统目录选择器");
+      setSectionError("home", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("home", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
-  const handleSave = async (value: DocumentDetail) => {
+  const handleDraftChange = (value: DocumentDetail) => {
+    if (!activeDocumentTab) {
+      return;
+    }
+    setDocumentDrafts((current) => ({ ...current, [activeDocumentTab.id]: value }));
+    setOpenDocumentTabs((current) =>
+      current.map((tab) =>
+        tab.id === activeDocumentTab.id
+          ? {
+              ...tab,
+              title: tabLabelFromDocument(value),
+              dirty: true,
+            }
+          : tab,
+      ),
+    );
+  };
+
+  const handleChangeTabMode = (tabId: string, mode: "preview" | "edit") => {
+    setOpenDocumentTabs((current) =>
+      current.map((tab) => (tab.id === tabId ? { ...tab, mode } : tab)),
+    );
+  };
+
+  const handleSaveDocument = async (value: DocumentDetail) => {
+    if (!activeDocumentTab) {
+      return;
+    }
     try {
-      const result = await saveDocument(value.path, value);
-      await refreshOverview(repo?.path);
-      const next = await getDocument(value.path);
-      setDetail(next);
-      recordActivity("已保存文档", result.path, result.updatedAt);
+      if (activeDocumentTab.isNew) {
+        const created = await createDocument(value.type, {
+          title: value.title,
+          date: value.date,
+          gitWorktree: value.gitWorktree,
+          body: value.body,
+        });
+        const next = await getDocument(created.path);
+        setDocumentDrafts((current) => ({ ...current, [activeDocumentTab.id]: next }));
+        setOpenDocumentTabs((current) =>
+          current.map((tab) =>
+            tab.id === activeDocumentTab.id
+              ? {
+                  ...tab,
+                  path: created.path,
+                  title: tabLabelFromDocument(next),
+                  dirty: false,
+                  isNew: false,
+                  mode: "preview",
+                }
+              : tab,
+          ),
+        );
+        await refreshOverview(repo?.path);
+        recordActivity("已创建文档", created.path, value.type);
+      } else {
+        const result = await saveDocument(value.path, value);
+        const next = await getDocument(value.path);
+        setDocumentDrafts((current) => ({ ...current, [activeDocumentTab.id]: next }));
+        setOpenDocumentTabs((current) =>
+          current.map((tab) =>
+            tab.id === activeDocumentTab.id
+              ? {
+                  ...tab,
+                  title: tabLabelFromDocument(next),
+                  dirty: false,
+                  mode: "preview",
+                }
+              : tab,
+          ),
+        );
+        await refreshOverview(repo?.path);
+        recordActivity("已保存文档", result.path, result.updatedAt);
+      }
+      setSectionError("documents", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("documents", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
-  const handleCreate = async (value: DocumentDetail) => {
+  const handleDeleteActiveDocument = async () => {
+    if (!activeDocumentTab) {
+      return;
+    }
+    if (!activeDocumentTab.path) {
+      closeDocumentTab(activeDocumentTab.id);
+      return;
+    }
     try {
-      const created = await createDocument(value.type, {
-        title: value.title,
-        date: value.date,
-        gitWorktree: value.gitWorktree,
-        body: value.body,
-      });
-      setSelectedPath(created.path);
+      await deleteDocument(activeDocumentTab.path);
+      closeDocumentTab(activeDocumentTab.id);
       await refreshOverview(repo?.path);
-      navigate(`/documents/edit?path=${encodeURIComponent(created.path)}`);
-      recordActivity("已创建文档", created.path, value.type);
+      recordActivity("已删除文档", activeDocumentTab.path);
+      setSectionError("documents", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("documents", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -344,8 +505,9 @@ function DesktopAppShell() {
       await refreshOverview(repo?.path);
       navigate("/assets");
       recordActivity("已导入资源", imported.path, imported.scope === "project" ? imported.project : "repo");
+      setSectionError("assets", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("assets", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -361,8 +523,9 @@ function DesktopAppShell() {
         filePath: selected,
         targetName: current.targetName.trim() ? current.targetName : defaultName,
       }));
+      setSectionError("assets", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("assets", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -375,8 +538,9 @@ function DesktopAppShell() {
       setMigrationForm((current) => ({ ...current, filePath: selected }));
       setMigrationPreview(null);
       setMigrationImportResult(null);
+      setSectionError("assets", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("assets", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -386,8 +550,9 @@ function DesktopAppShell() {
       setMigrationPreview(preview);
       setMigrationImportResult(null);
       recordActivity("已生成迁移预览", preview.sourceLabel, `${preview.drafts.length} 条候选知识`);
+      setSectionError("assets", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("assets", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -404,8 +569,9 @@ function DesktopAppShell() {
         result.createdPaths[0] ?? migrationForm.filePath,
         `新增 ${result.imported} 篇文档`,
       );
+      setSectionError("assets", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("assets", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -414,8 +580,9 @@ function DesktopAppShell() {
       const next = await runExport(kind);
       setSnapshot(next);
       recordActivity("已导出", kind, `${next.content.length} chars`);
+      setSectionError("ops", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("ops", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -424,8 +591,9 @@ function DesktopAppShell() {
       const next = await runValidate();
       setValidation(next);
       recordActivity("校验完成", next.ok ? "OK" : `发现 ${next.errors.length} 个问题`);
+      setSectionError("ops", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("ops", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -442,8 +610,9 @@ function DesktopAppShell() {
       });
       setProjectResult(result);
       recordActivity("已执行项目命令", `${selectedProject} · ${action}`, result.stdout || result.stderr);
+      setSectionError("projects", null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setSectionError("projects", cause instanceof Error ? cause.message : String(cause));
     }
   };
 
@@ -490,8 +659,7 @@ function DesktopAppShell() {
   };
 
   const openImportedMigrationDocument = (path: string) => {
-    setSelectedPath(path);
-    navigate(`/documents/edit?path=${encodeURIComponent(path)}`);
+    void openDocumentTab(path);
   };
 
   const updateRemoteForm = (field: "name" | "url" | "remote" | "branch", value: string) => {
@@ -519,7 +687,7 @@ function DesktopAppShell() {
         onChange={goToSection}
       />
       <main className="workspace">
-        {error ? <div className="error-banner">{error}</div> : null}
+        {section !== "documents" && currentSectionError ? <div className="error-banner">{currentSectionError}</div> : null}
         <div className={section === "home" ? "workspace__content workspace__content--home" : "workspace__content"}>
           <Routes>
             <Route
@@ -538,46 +706,33 @@ function DesktopAppShell() {
               path="/documents"
               element={
                 <DocumentsPage
+                  activeDocument={activeDocument}
+                  activeTabId={activeDocumentTabId}
                   documents={documents}
+                  error={sectionErrors.documents ?? null}
                   filters={filters}
+                  openTabs={openDocumentTabs}
                   query={query}
                   viewLabel={viewLabel}
-                  onQueryChange={setQuery}
+                  onActivateTab={setActiveDocumentTabId}
+                  onChangeDocument={handleDraftChange}
+                  onChangeTabMode={handleChangeTabMode}
+                  onCloseTab={closeDocumentTab}
+                  onDeleteDocument={() => void handleDeleteActiveDocument()}
                   onFiltersChange={setFilters}
-                  onOpenCreate={() => {
-                    setCreateDraft(buildCreateDraft());
-                    navigate("/documents/new");
-                  }}
-                  onOpenDocument={(path) => navigate(`/documents/edit?path=${encodeURIComponent(path)}`)}
+                  onOpenCreate={openCreateTab}
+                  onOpenDocument={(path) => void openDocumentTab(path)}
+                  onQueryChange={setQuery}
                   onResetView={() => {
                     setQuery("");
                     setFilters({});
                   }}
+                  onSaveDocument={(value) => void handleSaveDocument(value)}
                 />
               }
             />
-            <Route
-              path="/documents/new"
-              element={
-                <DocumentCreatePage
-                  mode="create"
-                  document={createDraft}
-                  onBack={() => navigate("/documents")}
-                  onSave={handleCreate}
-                />
-              }
-            />
-            <Route
-              path="/documents/edit"
-              element={
-                <DocumentCreatePage
-                  mode="edit"
-                  document={detail}
-                  onBack={() => navigate("/documents")}
-                  onSave={handleSave}
-                />
-              }
-            />
+            <Route path="/documents/new" element={<Navigate replace to="/documents" />} />
+            <Route path="/documents/edit" element={<Navigate replace to="/documents" />} />
             <Route
               path="/assets"
               element={

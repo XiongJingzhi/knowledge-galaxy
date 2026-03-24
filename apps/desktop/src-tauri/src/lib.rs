@@ -1158,6 +1158,17 @@ fn save_document(
 }
 
 #[tauri::command]
+fn delete_document(path: String, state: tauri::State<'_, AppState>) -> Result<SaveResult, String> {
+    let repo = repo_from_state(&state)?;
+    let absolute = repo.join(&path);
+    fs::remove_file(&absolute).map_err(|err| err.to_string())?;
+    Ok(SaveResult {
+        path,
+        updated_at: String::new(),
+    })
+}
+
+#[tauri::command]
 fn create_document(
     doc_type: String,
     payload: CreatePayload,
@@ -1483,6 +1494,7 @@ pub fn run() {
             search_documents,
             get_document,
             save_document,
+            delete_document,
             create_document,
             list_assets,
             import_asset,
